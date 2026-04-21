@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facilio — Sales Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --page-bg: #f4f4f8;
+  --header-bg: #1B0E51;
+  --card-bg: #ffffff;
+  --card-border: rgba(0,0,0,0.08);
+  --text: #1a1a2e;
+  --text-muted: #5a5a7a;
+  --text-faint: #9090b0;
+  --surface: #ffffff;
+  --border: rgba(0,0,0,0.08);
+  --accent: #301894;
+  --accent-light: #ede8ff;
+  --green: #0e7b4c;
+  --green-bg: #e6f7ef;
+  --amber: #a05a00;
+  --amber-bg: #fff3e0;
+  --red: #b91c1c;
+  --red-bg: #fee2e2;
+  --teal: #0f766e;
+  --teal-bg: #ccfbf1;
+  --gray: #4b5563;
+  --gray-bg: #f3f4f6;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:#f4f4f8;color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* ── Header ── */
+.header{background:#1B0E51;border-bottom:3px solid #301894;padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:32px;height:32px;background:#301894;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.logo-icon svg{width:18px;height:18px;fill:white;}
+.logo-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.2px;}
+.logo-text span{color:#a78bfa;}
+.header-meta{font-size:12px;color:rgba(255,255,255,0.55);}
+
+/* ── Product nav ── */
+.product-nav{background:#fff;border-bottom:1px solid rgba(0,0,0,0.08);padding:0 32px;display:flex;gap:0;overflow-x:auto;}
+.prod-btn{font-size:13px;font-weight:500;padding:14px 22px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:8px;}
+.prod-btn:hover{color:var(--text);}
+.prod-btn.active{color:#301894;border-bottom-color:#301894;}
+.prod-pill{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:#f4f4f8;color:var(--text-muted);}
+.prod-btn.active .prod-pill{background:#ede8ff;color:#301894;}
+
+/* ── Sub-tab nav (inside each product) ── */
+.sub-nav{background:#f8f7ff;border-bottom:1px solid rgba(0,0,0,0.06);padding:0 32px;display:flex;gap:0;}
+.sub-btn{font-size:12px;font-weight:500;padding:10px 18px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.sub-btn:hover{color:var(--text);}
+.sub-btn.active{color:#301894;border-bottom-color:#301894;}
+
+/* ── Page layout ── */
+.page{max-width:1080px;margin:0 auto;padding:28px 24px 64px;}
+.panel{display:none;}
+.panel.active{display:block;}
+.panel-title{font-size:20px;font-weight:700;letter-spacing:-0.3px;margin-bottom:4px;}
+.panel-sub{font-size:13px;color:var(--text-muted);margin-bottom:24px;}
+
+/* ── KPI cards ── */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px;}
+.kpi{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0;}
+.kpi.c-blue::before{background:#301894;}
+.kpi.c-green::before{background:#0e7b4c;}
+.kpi.c-teal::before{background:#0f766e;}
+.kpi.c-amber::before{background:#a05a00;}
+.kpi.c-purple::before{background:#7c3aed;}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:6px;}
+.kpi-val{font-size:26px;font-weight:800;letter-spacing:-0.5px;line-height:1;}
+.kpi.c-blue .kpi-val{color:#301894;}
+.kpi.c-green .kpi-val{color:#0e7b4c;}
+.kpi.c-teal .kpi-val{color:#0f766e;}
+.kpi.c-amber .kpi-val{color:#a05a00;}
+.kpi.c-purple .kpi-val{color:#7c3aed;}
+.kpi-sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
+
+/* ── Chart card ── */
+.chart-card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius);padding:22px 24px 18px;box-shadow:var(--shadow);margin-bottom:20px;}
+.chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+.chart-title{font-size:14px;font-weight:600;}
+.chart-hint{font-size:11px;color:var(--text-faint);margin-top:2px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;}
+
+/* ── Filters ── */
+.pill-group{display:flex;gap:4px;background:#f4f4f8;border:1px solid rgba(0,0,0,0.08);border-radius:8px;padding:3px;}
+.pill{font-size:12px;font-weight:500;padding:5px 13px;border-radius:6px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;transition:all .15s;}
+.pill.active{background:#fff;color:#1a1a2e;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+.sel{font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);background:#fff;color:var(--text);cursor:pointer;}
+
+/* ── Stats strip ── */
+.stats-strip{display:flex;gap:24px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid rgba(0,0,0,0.08);}
+.stat-item{display:flex;flex-direction:column;gap:2px;}
+.stat-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);}
+.stat-val{font-size:17px;font-weight:700;letter-spacing:-0.3px;}
+.stat-sub{font-size:11px;color:var(--text-muted);}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-muted);cursor:pointer;}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+
+/* ── Funnel ── */
+.funnel-step{margin-bottom:10px;}
+.funnel-step-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.funnel-step-label{font-size:13px;font-weight:600;}
+.funnel-step-count{font-size:13px;font-weight:700;}
+.funnel-track{height:34px;background:#f4f4f8;border-radius:6px;overflow:hidden;position:relative;}
+.funnel-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:12px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap;transition:width .6s ease;}
+.funnel-arrow{text-align:center;font-size:11px;color:#9090b0;padding:3px 0 5px;display:flex;align-items:center;gap:8px;}
+.funnel-line{flex:1;height:1px;background:rgba(0,0,0,0.08);}
+.conv-badge{font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:#f0f0ff;color:#301894;white-space:nowrap;}
+
+/* ── Pipeline rows ── */
+.pipe-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.pipe-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.pipe-bar-wrap{flex:1;height:6px;background:#f4f4f8;border-radius:4px;overflow:hidden;}
+.pipe-bar{height:100%;border-radius:4px;transition:width .5s ease;}
+
+/* ── Top deals ── */
+.top-deal-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.06);}
+.top-deal-row:last-child{border-bottom:none;}
+.top-deal-rank{width:22px;height:22px;border-radius:50%;background:#f0f0ff;color:#301894;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.top-deal-info{flex:1;min-width:0;}
+.top-deal-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.top-deal-meta{font-size:11px;color:var(--text-muted);margin-top:1px;}
+.top-deal-amt{font-size:13px;font-weight:700;color:#301894;white-space:nowrap;}
+
+/* ── Table ── */
+.table-card{background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+.table-hdr{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.table-title{font-size:14px;font-weight:600;}
+.table-count{font-size:12px;color:var(--text-muted);background:#f4f4f8;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,0,0,0.08);}
+.search-box{font-size:12px;padding:6px 12px;border:1px solid rgba(0,0,0,0.08);border-radius:var(--radius-sm);background:#f4f4f8;color:var(--text);width:190px;outline:none;}
+.search-box:focus{border-color:var(--accent);}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{text-align:left;padding:9px 14px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#9090b0;background:#f8f7ff;border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr{cursor:pointer;transition:background .1s;}
+tbody tr:hover td{background:#f8f7ff;}
+.td-name{font-weight:500;white-space:nowrap;}
+.td-muted{color:var(--text-muted);}
+.td-sm{font-size:11px;color:var(--text-faint);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.td-amt{font-weight:600;white-space:nowrap;}
+
+/* ── Badges ── */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;}
+.b-sal{background:#ede8ff;color:#301894;}
+.b-dg{background:#e6f7ef;color:#0e7b4c;}
+.b-disc{background:#fff3e0;color:#a05a00;}
+.b-prog{background:#f3f4f6;color:#4b5563;}
+.b-done{background:#e6f7ef;color:#0e7b4c;}
+.b-notdone{background:#fee2e2;color:#b91c1c;}
+.b-interest{background:#fff3e0;color:#a05a00;}
+.b-opp{background:#ede8ff;color:#301894;}
+.b-commit{background:#ccfbf1;color:#0f766e;}
+.b-won{background:#e6f7ef;color:#0e7b4c;}
+.b-lost{background:#fee2e2;color:#b91c1c;}
+.b-out{background:#fef3c7;color:#92400e;}
+.b-in{background:#e6f7ef;color:#0e7b4c;}
+.b-lto{background:#f3f4f6;color:#4b5563;}
+
+/* ── Filter chip ── */
+.filter-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:#ede8ff;color:#301894;margin-bottom:10px;}
+.filter-chip button{background:none;border:none;cursor:pointer;color:#301894;font-size:14px;line-height:1;padding:0 2px;}
+
+/* ── Drawer ── */
+.drawer-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:200;backdrop-filter:blur(2px);}
+.drawer-overlay.open{display:flex;align-items:flex-start;justify-content:flex-end;}
+.drawer{width:460px;max-width:96vw;height:100vh;background:#fff;border-left:1px solid var(--border);overflow-y:auto;box-shadow:var(--shadow-lg);animation:slideIn .22s ease;}
+@keyframes slideIn{from{transform:translateX(40px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+.drawer-hdr{padding:20px 24px 16px;border-bottom:1px solid rgba(0,0,0,0.08);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:#fff;z-index:2;}
+.drawer-name{font-size:16px;font-weight:700;letter-spacing:-0.2px;}
+.drawer-company{font-size:13px;color:var(--text-muted);margin-top:2px;}
+.close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-faint);padding:2px 6px;border-radius:4px;line-height:1;}
+.close-btn:hover{background:#f4f4f8;}
+.drawer-body{padding:20px 24px;}
+.field-group{margin-bottom:20px;}
+.field-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);margin-bottom:8px;}
+.field-row{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border);gap:12px;}
+.field-row:last-child{border-bottom:none;}
+.field-key{font-size:12px;color:var(--text-muted);flex-shrink:0;}
+.field-val{font-size:12px;font-weight:500;text-align:right;word-break:break-word;}
+.field-val.email{color:var(--accent);font-weight:400;}
+.act-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;}
+.act-card{background:#f8f7ff;border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border);}
+.act-card-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);margin-bottom:4px;}
+.act-card-val{font-size:12px;font-weight:500;}
+.act-card-date{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.timeline{margin-top:4px;}
+.tl-item{display:flex;gap:14px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);}
+.tl-item:last-child{border-bottom:none;}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.tl-dot.done{background:#0e7b4c;}
+.tl-dot.pending{background:#d1d5db;}
+.tl-dot.sal{background:#301894;}
+.tl-text{font-size:12px;font-weight:500;}
+.tl-date{font-size:11px;color:var(--text-faint);margin-top:2px;}
+
+/* ── Vertical bar chart (horizontal) ── */
+.hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.hbar-label{font-size:12px;color:var(--text-muted);width:120px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hbar-track{flex:1;height:20px;background:#f4f4f8;border-radius:4px;overflow:hidden;}
+.hbar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:8px;font-size:10px;font-weight:600;color:#fff;white-space:nowrap;transition:width .5s ease;}
+.hbar-val{font-size:11px;font-weight:600;color:var(--text);min-width:60px;text-align:right;flex-shrink:0;}
+
+/* ── Loading ── */
+.loading-overlay{position:fixed;inset:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;transition:opacity .4s;}
+.loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loading-spinner{width:36px;height:36px;border:3px solid #ede8ff;border-top-color:#301894;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-text{font-size:13px;color:#9090b0;}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:40px 24px;color:var(--text-faint);}
+
+/* ── Weighted box ── */
+.weighted-box{margin-top:14px;padding:12px 14px;background:#f8f7ff;border-radius:8px;border:1px solid rgba(48,24,148,0.12);}
+.weighted-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#9090b0;margin-bottom:4px;}
+.weighted-val{font-size:22px;font-weight:800;color:#301894;letter-spacing:-0.5px;}
+.weighted-sub{font-size:11px;color:#9090b0;margin-top:2px;}
+
+/* ── Product color overrides ── */
+.prod-cmms{--prod-color:#1d4ed8;--prod-light:#dbeafe;}
+.prod-ai{--prod-color:#0f766e;--prod-light:#ccfbf1;}
+.prod-other{--prod-color:#7c3aed;--prod-light:#ede9fe;}
+
+@media(max-width:700px){
+  .page{padding:20px 16px 48px;}
+  .header,.product-nav,.sub-nav{padding:0 16px;}
+  .kpis{grid-template-columns:repeat(2,1fr);}
+  .two-col,.three-col{grid-template-columns:1fr;}
+  .search-box{width:130px;}
+  .act-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Loading dashboard data…</div>
+</div>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zm0 11h7v7H3zm11-11h7v7h-7zm0 11h7v7h-7z"/></svg>
+    </div>
+    <span class="logo-text">Facilio <span>Sales</span></span>
+  </div>
+  <span class="header-meta" id="header-meta">Loading…</span>
+</header>
+
+<!-- Product nav -->
+<nav class="product-nav">
+  <button class="prod-btn active" data-prod="overall">Overall <span class="prod-pill" id="pill-overall"></span></button>
+  <button class="prod-btn" data-prod="cmms">CMMS <span class="prod-pill" id="pill-cmms"></span></button>
+  <button class="prod-btn" data-prod="aisuit">AI Suite <span class="prod-pill" id="pill-aisuit"></span></button>
+  <button class="prod-btn" data-prod="others">Other Products <span class="prod-pill" id="pill-others"></span></button>
+</nav>
+
+<!-- Sub-tab nav (hidden for overall) -->
+<nav class="sub-nav" id="sub-nav" style="display:none;">
+  <button class="sub-btn active" data-sub="overview">Overview</button>
+  <button class="sub-btn" data-sub="leads">Leads</button>
+  <button class="sub-btn" data-sub="sal">SAL</button>
+  <button class="sub-btn" data-sub="deals">Deals</button>
+</nav>
+
+<main class="page" id="main-page">
+
+  <!-- ══════════ OVERALL ══════════ -->
+  <div class="panel active" id="panel-overall">
+    <div class="panel-title">Pipeline Overview</div>
+    <div class="panel-sub" id="overall-sub">Total pipeline · all products · as of loading…</div>
+    <div class="kpis" id="overall-kpis"></div>
+
+    <div class="two-col">
+      <!-- Funnel -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:4px">Sales funnel — lead to deal</div>
+        <div class="chart-hint" style="margin-bottom:20px">End-to-end conversion across all stages</div>
+        <div id="overall-funnel"></div>
+      </div>
+      <!-- Pipeline by stage -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:4px">Pipeline value by stage</div>
+        <div class="chart-hint" style="margin-bottom:16px">Active deals only · USD</div>
+        <div id="overall-pipe-stage"></div>
+        <div class="weighted-box">
+          <div class="weighted-label">Weighted pipeline (by probability)</div>
+          <div class="weighted-val" id="overall-weighted"></div>
+          <div class="weighted-sub">Expected ARR value</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- By vertical -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:4px">Pipeline by vertical</div>
+        <div class="chart-hint" style="margin-bottom:16px">Active deals · USD amount</div>
+        <div id="overall-vertical"></div>
+      </div>
+      <!-- By product split -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:4px">Leads &amp; deals by product</div>
+        <div class="chart-hint" style="margin-bottom:16px">Count of leads and active deals per product</div>
+        <div style="position:relative;height:200px;"><canvas id="overall-product-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- Top 5 active deals -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:16px">Top 5 active deals by amount</div>
+        <div id="overall-top5"></div>
+      </div>
+      <!-- Territory -->
+      <div class="chart-card">
+        <div class="chart-title" style="margin-bottom:4px">Deals by territory</div>
+        <div class="chart-hint" style="margin-bottom:16px">Active deal count (SAL data)</div>
+        <div id="overall-territory"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PRODUCT PANELS ══════════ -->
+  <!-- Each product has 4 sub-panels: overview, leads, sal, deals -->
+
+  <!-- CMMS -->
+  <div class="panel" id="panel-cmms">
+    <div class="panel active" id="panel-cmms-overview"></div>
+    <div class="panel" id="panel-cmms-leads"></div>
+    <div class="panel" id="panel-cmms-sal"></div>
+    <div class="panel" id="panel-cmms-deals"></div>
+  </div>
+
+  <!-- AI Suite -->
+  <div class="panel" id="panel-aisuit">
+    <div class="panel active" id="panel-aisuit-overview"></div>
+    <div class="panel" id="panel-aisuit-leads"></div>
+    <div class="panel" id="panel-aisuit-sal"></div>
+    <div class="panel" id="panel-aisuit-deals"></div>
+  </div>
+
+  <!-- Other Products -->
+  <div class="panel" id="panel-others">
+    <div class="panel active" id="panel-others-overview"></div>
+    <div class="panel" id="panel-others-leads"></div>
+    <div class="panel" id="panel-others-sal"></div>
+    <div class="panel" id="panel-others-deals"></div>
+  </div>
+
+</main>
+
+<!-- Drawer -->
+<div class="drawer-overlay" id="drawer-overlay">
+  <div class="drawer">
+    <div class="drawer-hdr">
+      <div>
+        <div class="drawer-name" id="d-name"></div>
+        <div class="drawer-company" id="d-company"></div>
+      </div>
+      <button class="close-btn" id="drawer-close">&#x2715;</button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// GLOBALS
+// ════════════════════════════════════════
+var ALL_LEADS = [], ALL_SAL = [], ALL_DEALS = [];
+var currentProd = 'overall', currentSub = 'overview';
+var chartRegistry = {}; // track Chart instances by id
+
+var ACTIVE_STAGES = ['Interest','Sales Accepted','Opportunity','RFP','Procurement','Finance Approval','Commitment'];
+var STAGE_ORDER   = ['Interest','Sales Accepted','Opportunity','RFP','Procurement','Finance Approval','Commitment','Closed Won','Closed Lost'];
+
+var STAGE_COLORS = {
+  'Interest':'#f59e0b','Sales Accepted':'#4f7bff','Opportunity':'#10b981',
+  'RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa',
+  'Commitment':'#22c55e','Closed Won':'#16a34a','Closed Lost':'#ef4444'
+};
+var TERR_COLORS = {
+  'Middle East':'#1a56db','North America':'#0e7b4c','Europe':'#d97706',
+  'UK':'#9333ea','India':'#0f766e','ANZ':'#be185d','USA':'#0369a1'
+};
+var LEAD_COLORS = {
+  'SAL':'#1a56db','DG Qualified':'#0e7b4c','Discovery Set':'#d97706',
+  'In-Progress':'#9ca3af','LTO':'#7c3aed'
+};
+var LEAD_BADGES = {
+  'SAL':'b-sal','DG Qualified':'b-dg','Discovery Set':'b-disc','In-Progress':'b-prog','LTO':'b-lto'
+};
+var STAGE_BADGE = {
+  'Interest':'b-interest','Sales Accepted':'b-sal','Opportunity':'b-opp',
+  'Commitment':'b-commit','Closed Won':'b-won','Closed Lost':'b-lost'
+};
+
+// Product config
+var PRODS = {
+  cmms:   { label:'CMMS',           color:'#1d4ed8', light:'#dbeafe', dealFilter: function(d){ return d['Opportunity Type']==='Connected CMMS'; }, leadFilter: function(l){ return l['Lead Type']==='CMMS'; }, salFilter: function(s){ return s['Opportunity Type']==='Connected CMMS'; } },
+  aisuit: { label:'AI Suite',       color:'#0f766e', light:'#ccfbf1', dealFilter: function(d){ return d['Opportunity Type']==='AI Suite'; },      leadFilter: function(l){ return l['Lead Type']==='AI Suite'; }, salFilter: function(s){ return s['Opportunity Type']==='AI Suite'; } },
+  others: { label:'Other Products', color:'#7c3aed', light:'#ede9fe', dealFilter: function(d){ return d['Opportunity Type']!=='Connected CMMS' && d['Opportunity Type']!=='AI Suite'; }, leadFilter: function(l){ return l['Lead Type']!=='CMMS' && l['Lead Type']!=='AI Suite'; }, salFilter: function(s){ return s['Opportunity Type']!=='Connected CMMS' && s['Opportunity Type']!=='AI Suite'; } }
+};
+
+// ════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════
+function safeFloat(v){ try{ return parseFloat(v||0)||0; } catch(e){ return 0; } }
+function fmt(n){ if(n>=1e6) return '$'+(n/1e6).toFixed(2)+'M'; if(n>=1e3) return '$'+Math.round(n/1e3)+'k'; return '$'+Math.round(n); }
+function fmtFull(n){ return '$'+Math.round(n).toLocaleString(); }
+
+function parseDate(s){
+  if(!s||s==='-'||s==='') return null;
+  var str = s.toString().split(',')[0].trim();
+  var iso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(iso){ var d=new Date(+iso[1],+iso[2]-1,+iso[3]); return isNaN(d)?null:d; }
+  var mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(mdy){
+    var p1=+mdy[1],p2=+mdy[2],yr=+mdy[3];
+    if(yr<2020||yr>2035) return null;
+    var m2,d2;
+    if(p1>12){m2=p2-1;d2=p1;}else{m2=p1-1;d2=p2;}
+    var dt=new Date(yr,m2,d2); return isNaN(dt)?null:dt;
+  }
+  return null;
+}
+function getKey(dateStr,mode){
+  var d=parseDate(dateStr); if(!d) return null;
+  if(mode==='weekly'){ var m=new Date(d);m.setDate(d.getDate()-((d.getDay()+6)%7));m.setHours(0,0,0,0);return m.toISOString().slice(0,10); }
+  if(mode==='biweekly'){ var anchor=new Date('2026-01-05');var mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));mon.setHours(0,0,0,0);var diff=Math.max(0,Math.floor((mon-anchor)/(7*86400000)));var start=new Date(anchor);start.setDate(anchor.getDate()+Math.floor(diff/2)*14);return start.toISOString().slice(0,10); }
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function fmtKey(k,mode){
+  if(mode==='monthly'){ var p=k.split('-');return new Date(+p[0],+p[1]-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'}); }
+  var d=new Date(k+'T00:00:00'),end=new Date(d);end.setDate(d.getDate()+(mode==='biweekly'?13:6));
+  var f=function(dt){return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
+  return f(d)+' – '+f(end);
+}
+function srcBadge(s){ return '<span class="badge '+(s==='Outbound'?'b-out':'b-in')+'">'+s+'</span>'; }
+function doneBadge(v){ return v==='1'?'<span class="badge b-done">Done</span>':'<span class="badge b-notdone">Not done</span>'; }
+function stageBadge(s){ return '<span class="badge '+(STAGE_BADGE[s]||'b-prog')+'">'+s+'</span>'; }
+function salTypeBadge(s){
+  var map={'Connected CMMS':'background:#dbeafe;color:#1d4ed8','AI Suite':'background:#ccfbf1;color:#0f766e'};
+  var style=map[s]||'background:#ede9fe;color:#7c3aed';
+  return '<span class="badge" style="'+style+'">'+s+'</span>';
+}
+
+function destroyChart(id){
+  if(chartRegistry[id]){ try{chartRegistry[id].destroy();}catch(e){} delete chartRegistry[id]; }
+}
+
+// Count-label plugin
+var countLabelPlugin={
+  id:'countLabels',
+  afterDatasetsDraw:function(chart){
+    var ctx=chart.ctx;
+    chart.data.labels.forEach(function(_,i){
+      var total=0;
+      chart.data.datasets.forEach(function(ds){total+=ds.data[i]||0;});
+      if(!total) return;
+      var topBar=null;
+      for(var di=chart.data.datasets.length-1;di>=0;di--){
+        if((chart.data.datasets[di].data[i]||0)>0){topBar=chart.getDatasetMeta(di).data[i];break;}
+      }
+      if(!topBar) return;
+      ctx.save();ctx.font='bold 11px -apple-system,sans-serif';ctx.fillStyle='#1a1a1a';ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillText(total,topBar.x,topBar.y-3);ctx.restore();
+    });
+  }
+};
+
+function buildStatsStrip(keys,totals,mode,elId){
+  var overall=totals.reduce(function(a,b){return a+b;},0);
+  var avg=keys.length?(overall/keys.length).toFixed(1):0;
+  var maxTotal=Math.max.apply(null,totals.concat([0]));
+  var maxKey=keys[totals.indexOf(maxTotal)];
+  var label=mode==='weekly'?'week':mode==='biweekly'?'bi-week':'month';
+  var el=document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML='<div class="stat-item"><div class="stat-label">Overall (2026)</div><div class="stat-val">'+overall+'</div><div class="stat-sub">total</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Peak '+label+'</div><div class="stat-val">'+maxTotal+'</div><div class="stat-sub">'+(maxKey?fmtKey(maxKey,mode):'—')+'</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Avg / '+label+'</div><div class="stat-val">'+avg+'</div><div class="stat-sub">across '+keys.length+' '+label+'s</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Latest period</div><div class="stat-val">'+(keys.length?totals[totals.length-1]:0)+'</div><div class="stat-sub">'+(keys.length?fmtKey(keys[keys.length-1],mode):'—')+'</div></div>';
+}
+
+// ════════════════════════════════════════
+// NAV
+// ════════════════════════════════════════
+document.querySelectorAll('.prod-btn').forEach(function(btn){
+  btn.onclick=function(){
+    currentProd=this.dataset.prod; currentSub='overview';
+    document.querySelectorAll('.prod-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    document.querySelectorAll('#main-page > .panel').forEach(function(p){p.classList.remove('active');});
+    var panel=document.getElementById('panel-'+currentProd);
+    if(panel) panel.classList.add('active');
+    var subNav=document.getElementById('sub-nav');
+    if(currentProd==='overall'){ subNav.style.display='none'; }
+    else{
+      subNav.style.display='';
+      document.querySelectorAll('.sub-btn').forEach(function(b){b.classList.toggle('active',b.dataset.sub==='overview');});
+      showSubPanel(currentProd,'overview');
+    }
+    renderCurrentView();
+  };
+});
+
+document.querySelectorAll('.sub-btn').forEach(function(btn){
+  btn.onclick=function(){
+    currentSub=this.dataset.sub;
+    document.querySelectorAll('.sub-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    showSubPanel(currentProd,currentSub);
+    renderCurrentView();
+  };
+});
+
+function showSubPanel(prod,sub){
+  ['overview','leads','sal','deals'].forEach(function(s){
+    var p=document.getElementById('panel-'+prod+'-'+s);
+    if(p) p.classList.toggle('active',s===sub);
+  });
+}
+
+document.getElementById('drawer-close').onclick=function(){document.getElementById('drawer-overlay').classList.remove('open');};
+document.getElementById('drawer-overlay').onclick=function(e){if(e.target===this)this.classList.remove('open');};
+
+// ════════════════════════════════════════
+// RENDER DISPATCHER
+// ════════════════════════════════════════
+function renderCurrentView(){
+  if(currentProd==='overall'){ renderOverall(); return; }
+  var prod=PRODS[currentProd];
+  var deals=ALL_DEALS.filter(prod.dealFilter);
+  var leads=ALL_LEADS.filter(prod.leadFilter);
+  var sal=ALL_SAL.filter(prod.salFilter);
+  if(currentSub==='overview') renderProductOverview(currentProd,prod,deals,leads,sal);
+  if(currentSub==='leads')    renderLeadsTab(currentProd,prod,leads);
+  if(currentSub==='sal')      renderSALTab(currentProd,prod,sal);
+  if(currentSub==='deals')    renderDealsTab(currentProd,prod,deals);
+}
+
+// ════════════════════════════════════════
+// OVERALL TAB
+// ════════════════════════════════════════
+function renderOverall(){
+  var active=ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;});
+  var won=ALL_DEALS.filter(function(d){return d['Stage']==='Closed Won';});
+  var totalPipe=active.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var totalWon=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var weighted=ALL_DEALS.reduce(function(a,d){return a+safeFloat(d['Amount'])*safeFloat(d['Probability (%)'])/100;},0);
+  var totalLeads=ALL_LEADS.length;
+  var totalSAL=ALL_SAL.length;
+
+  document.getElementById('overall-sub').textContent='Total pipeline · all products · '+ALL_DEALS.length+' deals · '+totalLeads+' leads';
+
+  // KPIs
+  document.getElementById('overall-kpis').innerHTML=
+    '<div class="kpi c-blue"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+active.length+' active deals</div></div>'+
+    '<div class="kpi c-green"><div class="kpi-label">Closed Won</div><div class="kpi-val">'+fmt(totalWon)+'</div><div class="kpi-sub">'+won.length+' deals closed</div></div>'+
+    '<div class="kpi c-teal"><div class="kpi-label">Total Leads</div><div class="kpi-val">'+totalLeads+'</div><div class="kpi-sub">→ '+totalSAL+' SAL converted</div></div>'+
+    '<div class="kpi c-amber"><div class="kpi-label">SAL Pipeline</div><div class="kpi-val">'+totalSAL+'</div><div class="kpi-sub">'+Math.round(totalSAL/Math.max(totalLeads,1)*100)+'% lead → SAL</div></div>'+
+    '<div class="kpi c-purple"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+ALL_DEALS.length+'</div><div class="kpi-sub">'+ALL_DEALS.filter(function(d){return d['Stage']==='Closed Lost';}).length+' lost</div></div>';
+
+  // Funnel
+  var discSet=ALL_LEADS.filter(function(l){return ['Discovery Set','DG Qualified','SAL'].indexOf(l['Lead Status'])>-1;}).length;
+  var discDone=ALL_LEADS.filter(function(l){return l['Discovery Done']==='1';}).length;
+  var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+  var steps=[
+    {label:'Total Leads',count:totalLeads,color:'#1B0E51'},
+    {label:'Discovery Set',count:discSet,color:'#4338ca'},
+    {label:'Discovery Done',count:discDone,color:'#0369a1'},
+    {label:'SAL',count:totalSAL,color:'#0e7b4c'},
+    {label:'Opportunity+',count:opps,color:'#0f766e'},
+    {label:'Closed Won',count:won.length,color:'#22c55e'}
+  ];
+  var fHTML='';
+  steps.forEach(function(step,i){
+    var pct=totalLeads>0?Math.max(4,Math.round(step.count/totalLeads*100)):4;
+    fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div>'+
+      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';
+    if(i<steps.length-1){
+      var nextCount=steps[i+1].count;
+      var rate=step.count>0?Math.round(nextCount/step.count*100):0;
+      fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'% conv</span><div class="funnel-line"></div></div>';
+    }
+  });
+  document.getElementById('overall-funnel').innerHTML=fHTML;
+
+  // Pipeline by stage
+  var maxAmt=0;
+  ACTIVE_STAGES.forEach(function(s){
+    var a=active.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);
+    if(a>maxAmt) maxAmt=a;
+  });
+  var stageHTML='';
+  ACTIVE_STAGES.forEach(function(s){
+    var recs=active.filter(function(d){return d['Stage']===s;});
+    var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+    if(!recs.length) return;
+    var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;
+    var col=STAGE_COLORS[s]||'#888';
+    stageHTML+='<div class="pipe-row">'+
+      '<div class="pipe-dot" style="background:'+col+'"></div>'+
+      '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<span style="font-size:12px;color:var(--text-muted)">'+s+'</span>'+
+        '<span style="font-size:12px;font-weight:600">'+fmt(amt)+'</span></div>'+
+      '<div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+      '<div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';
+  });
+  document.getElementById('overall-pipe-stage').innerHTML=stageHTML;
+  document.getElementById('overall-weighted').textContent=fmt(weighted);
+
+  // Vertical
+  var vertMap={};
+  active.forEach(function(d){
+    var v=d['Vertical']||'Unknown';
+    if(!vertMap[v]){vertMap[v]={count:0,amt:0};}
+    vertMap[v].count++;vertMap[v].amt+=safeFloat(d['Amount']);
+  });
+  var vertEntries=Object.entries(vertMap).sort(function(a,b){return b[1].amt-a[1].amt;});
+  var maxVAmt=vertEntries.length?vertEntries[0][1].amt:1;
+  var vertHTML='';
+  var vertColors=['#1d4ed8','#0f766e','#7c3aed','#d97706','#dc2626','#0891b2','#059669','#9333ea','#ea580c','#0284c7'];
+  vertEntries.forEach(function(e,i){
+    var v=e[0],info=e[1];
+    var pct=Math.max(8,Math.round(info.amt/maxVAmt*100));
+    var col=vertColors[i%vertColors.length];
+    vertHTML+='<div class="hbar-row">'+
+      '<div class="hbar-label" title="'+v+'">'+v+'</div>'+
+      '<div class="hbar-track"><div class="hbar-fill" style="width:'+pct+'%;background:'+col+'">'+(pct>=20?info.count+' deals':'')+'</div></div>'+
+      '<div class="hbar-val">'+fmt(info.amt)+'</div></div>';
+  });
+  document.getElementById('overall-vertical').innerHTML=vertHTML;
+
+  // Product chart
+  destroyChart('overall-product-chart');
+  var prodLabels=['CMMS','AI Suite','Other Products'];
+  var prodLeads=[
+    ALL_LEADS.filter(PRODS.cmms.leadFilter).length,
+    ALL_LEADS.filter(PRODS.aisuit.leadFilter).length,
+    ALL_LEADS.filter(PRODS.others.leadFilter).length
+  ];
+  var prodDeals=[
+    ALL_DEALS.filter(function(d){return PRODS.cmms.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,
+    ALL_DEALS.filter(function(d){return PRODS.aisuit.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,
+    ALL_DEALS.filter(function(d){return PRODS.others.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length
+  ];
+  chartRegistry['overall-product-chart']=new Chart(document.getElementById('overall-product-chart'),{
+    type:'bar',
+    data:{labels:prodLabels,datasets:[
+      {label:'Leads',data:prodLeads,backgroundColor:['#dbeafe','#ccfbf1','#ede9fe'],borderColor:['#1d4ed8','#0f766e','#7c3aed'],borderWidth:1.5,borderRadius:4},
+      {label:'Active Deals',data:prodDeals,backgroundColor:['#1d4ed8cc','#0f766ecc','#7c3aedcc'],borderRadius:4}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},color:'#5a5a7a',boxWidth:10}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9090b0',font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#9090b0',font:{size:11},stepSize:10}}}}
+  });
+
+  // Top 5 deals
+  var top5=ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1&&safeFloat(d['Amount'])>0;})
+    .sort(function(a,b){return safeFloat(b['Amount'])-safeFloat(a['Amount']);}).slice(0,5);
+  var top5HTML='';
+  top5.forEach(function(d,i){
+    var typeColors={'Connected CMMS':'#1d4ed8','AI Suite':'#0f766e'};
+    var tc=typeColors[d['Opportunity Type']]||'#7c3aed';
+    top5HTML+='<div class="top-deal-row">'+
+      '<div class="top-deal-rank">'+(i+1)+'</div>'+
+      '<div class="top-deal-info">'+
+        '<div class="top-deal-name">'+d['Account Name']+'</div>'+
+        '<div class="top-deal-meta"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+d['Opportunity Type']+'</span> · '+d['Stage']+' · '+(d['Vertical']||'—')+'</div>'+
+      '</div>'+
+      '<div class="top-deal-amt">'+fmtFull(safeFloat(d['Amount']))+'</div>'+
+    '</div>';
+  });
+  document.getElementById('overall-top5').innerHTML=top5HTML||'<div class="empty">No active deals with amount</div>';
+
+  // Territory (from SAL)
+  var terrMap={};
+  ALL_SAL.forEach(function(s){
+    var t=s['Territory']||'Unknown';
+    terrMap[t]=(terrMap[t]||0)+1;
+  });
+  var terrEntries=Object.entries(terrMap).sort(function(a,b){return b[1]-a[1];});
+  var maxT=terrEntries.length?terrEntries[0][1]:1;
+  var terrHTML='';
+  terrEntries.forEach(function(e){
+    var t=e[0],cnt=e[1];
+    var col=TERR_COLORS[t]||'#888';
+    var pct=Math.round(cnt/maxT*100);
+    terrHTML+='<div class="hbar-row">'+
+      '<div class="hbar-label">'+t+'</div>'+
+      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
+      '<div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';
+  });
+  document.getElementById('overall-territory').innerHTML=terrHTML||'<div class="empty">No territory data</div>';
+}
+
+// ════════════════════════════════════════
+// PRODUCT OVERVIEW TAB
+// ════════════════════════════════════════
+function renderProductOverview(prodKey,prod,deals,leads,sal){
+  var el=document.getElementById('panel-'+prodKey+'-overview');
+  var active=deals.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;});
+  var won=deals.filter(function(d){return d['Stage']==='Closed Won';});
+  var lost=deals.filter(function(d){return d['Stage']==='Closed Lost';});
+  var totalPipe=active.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var totalWon=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var weighted=deals.reduce(function(a,d){return a+safeFloat(d['Amount'])*safeFloat(d['Probability (%)'])/100;},0);
+  var salLeads=leads.filter(function(l){return l['Lead Status']==='SAL';});
+  var discSet=leads.filter(function(l){return ['Discovery Set','DG Qualified','SAL'].indexOf(l['Lead Status'])>-1;}).length;
+  var discDone=leads.filter(function(l){return l['Discovery Done']==='1';}).length;
+  var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+
+  var html='<div class="panel-title">'+prod.label+' — Overview</div>'+
+    '<div class="panel-sub">Active pipeline · leads · conversion</div>'+
+    '<div class="kpis">'+
+      '<div class="kpi c-blue"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+active.length+' active deals</div></div>'+
+      '<div class="kpi c-green"><div class="kpi-label">Closed Won</div><div class="kpi-val">'+fmt(totalWon)+'</div><div class="kpi-sub">'+won.length+' deals</div></div>'+
+      '<div class="kpi c-teal"><div class="kpi-label">Total Leads</div><div class="kpi-val">'+leads.length+'</div><div class="kpi-sub">'+salLeads.length+' SAL</div></div>'+
+      '<div class="kpi c-amber"><div class="kpi-label">Deals Lost</div><div class="kpi-val">'+lost.length+'</div><div class="kpi-sub">'+fmt(lost.reduce(function(a,d){return a+safeFloat(d['Amount']);},0))+' lost value</div></div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      // Funnel
+      '<div class="chart-card">'+
+        '<div class="chart-title" style="margin-bottom:4px">Sales funnel</div>'+
+        '<div class="chart-hint" style="margin-bottom:20px">Lead → deal conversion</div>'+
+        '<div id="pov-funnel-'+prodKey+'"></div>'+
+      '</div>'+
+      // Stage pipeline
+      '<div class="chart-card">'+
+        '<div class="chart-title" style="margin-bottom:4px">Pipeline by stage</div>'+
+        '<div class="chart-hint" style="margin-bottom:16px">Active deals · USD</div>'+
+        '<div id="pov-stage-'+prodKey+'"></div>'+
+        '<div class="weighted-box">'+
+          '<div class="weighted-label">Weighted pipeline</div>'+
+          '<div class="weighted-val" style="color:'+prod.color+'">'+fmt(weighted)+'</div>'+
+          '<div class="weighted-sub">by probability</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="two-col">'+
+      // Lead status
+      '<div class="chart-card">'+
+        '<div class="chart-title" style="margin-bottom:4px">Lead status breakdown</div>'+
+        '<div class="chart-hint" style="margin-bottom:16px">All leads at latest status</div>'+
+        '<div id="pov-leadstatus-'+prodKey+'"></div>'+
+      '</div>'+
+      // Territory
+      '<div class="chart-card">'+
+        '<div class="chart-title" style="margin-bottom:4px">By territory (SAL)</div>'+
+        '<div class="chart-hint" style="margin-bottom:16px">SAL count per territory</div>'+
+        '<div id="pov-terr-'+prodKey+'"></div>'+
+      '</div>'+
+    '</div>';
+
+  el.innerHTML=html;
+
+  // Funnel
+  var fSteps=[
+    {label:'Total Leads',count:leads.length,color:prod.color},
+    {label:'Discovery Set',count:discSet,color:prod.color+'dd'},
+    {label:'Discovery Done',count:discDone,color:prod.color+'bb'},
+    {label:'SAL',count:sal.length,color:'#0e7b4c'},
+    {label:'Opportunity+',count:opps,color:'#0f766e'},
+    {label:'Closed Won',count:won.length,color:'#22c55e'}
+  ];
+  var fHTML='';
+  fSteps.forEach(function(step,i){
+    var base=leads.length||1;
+    var pct=Math.max(4,Math.round(step.count/base*100));
+    fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div>'+
+      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';
+    if(i<fSteps.length-1){
+      var rate=step.count>0?Math.round(fSteps[i+1].count/step.count*100):0;
+      fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'%</span><div class="funnel-line"></div></div>';
+    }
+  });
+  document.getElementById('pov-funnel-'+prodKey).innerHTML=fHTML;
+
+  // Stage pipeline
+  var maxAmt=0;
+  ACTIVE_STAGES.forEach(function(s){
+    var a=active.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);
+    if(a>maxAmt) maxAmt=a;
+  });
+  var stHTML='';
+  ACTIVE_STAGES.forEach(function(s){
+    var recs=active.filter(function(d){return d['Stage']===s;});
+    var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+    if(!recs.length) return;
+    var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;
+    var col=STAGE_COLORS[s]||'#888';
+    stHTML+='<div class="pipe-row">'+
+      '<div class="pipe-dot" style="background:'+col+'"></div>'+
+      '<div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
+        '<span style="font-size:12px;color:var(--text-muted)">'+s+'</span>'+
+        '<span style="font-size:12px;font-weight:600">'+fmt(amt)+'</span></div>'+
+      '<div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+      '<div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';
+  });
+  document.getElementById('pov-stage-'+prodKey).innerHTML=stHTML||'<div class="empty">No active deals</div>';
+
+  // Lead status
+  var statusMap={};
+  leads.forEach(function(l){var s=l['Lead Status']||'Unknown';statusMap[s]=(statusMap[s]||0)+1;});
+  var statusEntries=Object.entries(statusMap).sort(function(a,b){return b[1]-a[1];});
+  var maxS=statusEntries.length?statusEntries[0][1]:1;
+  var lsHTML='';
+  statusEntries.forEach(function(e){
+    var s=e[0],cnt=e[1];
+    var col=(LEAD_COLORS[s]||'#888');
+    var pct=Math.round(cnt/maxS*100);
+    lsHTML+='<div class="hbar-row">'+
+      '<div style="width:100px;flex-shrink:0"><span class="badge '+(LEAD_BADGES[s]||'b-prog')+'" style="font-size:10px">'+s+'</span></div>'+
+      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
+      '<div class="hbar-val">'+cnt+'</div></div>';
+  });
+  document.getElementById('pov-leadstatus-'+prodKey).innerHTML=lsHTML||'<div class="empty">No leads</div>';
+
+  // Territory
+  var tMap={};
+  sal.forEach(function(s){var t=s['Territory']||'Unknown';tMap[t]=(tMap[t]||0)+1;});
+  var tEntries=Object.entries(tMap).sort(function(a,b){return b[1]-a[1];});
+  var maxT2=tEntries.length?tEntries[0][1]:1;
+  var tHTML='';
+  tEntries.forEach(function(e){
+    var t=e[0],cnt=e[1];
+    var col=TERR_COLORS[t]||'#888';
+    var pct=Math.round(cnt/maxT2*100);
+    tHTML+='<div class="hbar-row">'+
+      '<div class="hbar-label">'+t+'</div>'+
+      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
+      '<div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';
+  });
+  document.getElementById('pov-terr-'+prodKey).innerHTML=tHTML||'<div class="empty">No territory data</div>';
+}
+
+// ════════════════════════════════════════
+// LEADS TAB
+// ════════════════════════════════════════
+var leadsState={};
+
+function renderLeadsTab(prodKey,prod,leads){
+  var el=document.getElementById('panel-'+prodKey+'-leads');
+  var chartId='leads-chart-'+prodKey;
+  var statsId='leads-stats-'+prodKey;
+  var tbodyId='leads-tbody-'+prodKey;
+
+  if(!leadsState[prodKey]){ leadsState[prodKey]={mode:'monthly',barKey:null,status:null,owner:'all',source:'all',search:''}; }
+  var st=leadsState[prodKey];
+
+  var owners=[...new Set(leads.map(function(l){return l['Lead Owner']||'';}))].filter(Boolean).sort();
+
+  el.innerHTML=
+    '<div class="panel-title">'+prod.label+' — Leads</div>'+
+    '<div class="panel-sub">All leads at their latest status · click bars to filter</div>'+
+    '<div class="kpis" id="lkpi-'+prodKey+'"></div>'+
+    '<div class="chart-card">'+
+      '<div class="chart-header">'+
+        '<div><div class="chart-title">Leads created over time</div><div class="chart-hint">Click a bar segment to filter · click again to clear</div></div>'+
+        '<div class="pill-group" id="lmode-'+prodKey+'">'+
+          '<button class="pill" data-v="weekly">Weekly</button>'+
+          '<button class="pill" data-v="biweekly">Bi-weekly</button>'+
+          '<button class="pill active" data-v="monthly">Monthly</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="position:relative;height:260px;"><canvas id="'+chartId+'"></canvas></div>'+
+      '<div class="stats-strip" id="'+statsId+'"></div>'+
+      '<div class="legend" id="lleads-legend-'+prodKey+'"></div>'+
+    '</div>'+
+    '<div class="table-card">'+
+      '<div class="table-hdr">'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+          '<span class="table-title" id="ltitle-'+prodKey+'">All Leads</span>'+
+          '<span class="table-count" id="lcount-'+prodKey+'">0</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<select class="sel" id="lowner-'+prodKey+'"><option value="all">All owners</option>'+owners.map(function(o){return '<option value="'+o+'">'+o+'</option>';}).join('')+'</select>'+
+          '<select class="sel" id="lsource-'+prodKey+'"><option value="all">All sources</option><option value="Outbound">Outbound</option><option value="Inbound">Inbound</option></select>'+
+          '<input class="search-box" id="lsearch-'+prodKey+'" placeholder="Search name or company…">'+
+        '</div>'+
+      '</div>'+
+      '<div id="lchip-'+prodKey+'" style="padding:0 20px"></div>'+
+      '<div class="tbl-wrap"><table>'+
+        '<thead><tr><th>Name</th><th>Company</th><th>Title</th><th>Owner</th><th>Status</th><th>Discovery</th><th>Discovery Date</th><th>Sales Intro</th><th>Sales Intro Date</th><th>Source</th></tr></thead>'+
+        '<tbody id="'+tbodyId+'"></tbody>'+
+      '</table><div id="lempty-'+prodKey+'" class="empty" style="display:none">No leads match your filters</div></div>'+
+    '</div>';
+
+  // KPIs
+  var sal=leads.filter(function(l){return l['Lead Status']==='SAL';}).length;
+  var dg=leads.filter(function(l){return l['Lead Status']==='DG Qualified';}).length;
+  var ds=leads.filter(function(l){return l['Lead Status']==='Discovery Set';}).length;
+  var ip=leads.filter(function(l){return l['Lead Status']==='In-Progress';}).length;
+  document.getElementById('lkpi-'+prodKey).innerHTML=
+    '<div class="kpi c-blue"><div class="kpi-label">Total Leads</div><div class="kpi-val">'+leads.length+'</div><div class="kpi-sub">'+prod.label+'</div></div>'+
+    '<div class="kpi c-green"><div class="kpi-label">SAL</div><div class="kpi-val">'+sal+'</div><div class="kpi-sub">'+Math.round(sal/Math.max(leads.length,1)*100)+'% of total</div></div>'+
+    '<div class="kpi c-teal"><div class="kpi-label">DG Qualified</div><div class="kpi-val">'+dg+'</div><div class="kpi-sub">Discovery done</div></div>'+
+    '<div class="kpi c-amber"><div class="kpi-label">Discovery Set</div><div class="kpi-val">'+ds+'</div><div class="kpi-sub">Meeting scheduled</div></div>'+
+    '<div class="kpi c-purple"><div class="kpi-label">In-Progress</div><div class="kpi-val">'+ip+'</div><div class="kpi-sub">Yet to qualify</div></div>';
+
+  // Wire up controls
+  document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(btn){
+    btn.onclick=function(){
+      st.mode=this.dataset.v; st.barKey=null; st.status=null;
+      document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});
+      this.classList.add('active');
+      drawLeadsChart(prodKey,prod,leads,chartId,statsId);
+      drawLeadsTable(prodKey,prod,leads,tbodyId);
+    };
+  });
+  document.getElementById('lowner-'+prodKey).onchange=function(){ st.owner=this.value; drawLeadsTable(prodKey,prod,leads,tbodyId); };
+  document.getElementById('lsource-'+prodKey).onchange=function(){ st.source=this.value; drawLeadsTable(prodKey,prod,leads,tbodyId); };
+  document.getElementById('lsearch-'+prodKey).oninput=function(){ st.search=this.value.trim(); drawLeadsTable(prodKey,prod,leads,tbodyId); };
+
+  drawLeadsChart(prodKey,prod,leads,chartId,statsId);
+  drawLeadsTable(prodKey,prod,leads,tbodyId);
+}
+
+function drawLeadsChart(prodKey,prod,leads,chartId,statsId){
+  var st=leadsState[prodKey];
+  var STATUSES=['SAL','DG Qualified','Discovery Set','In-Progress','LTO'];
+  var buckets={};
+  leads.forEach(function(l){
+    var k=getKey(l['discovery meeting date']||l['Sales Intro Date']||'',st.mode);
+    if(!k){ k='No date'; }
+    if(!buckets[k]){ buckets[k]={}; STATUSES.forEach(function(s){buckets[k][s]=0;}); }
+    var ls=l['Lead Status']||'In-Progress';
+    buckets[k][ls]=(buckets[k][ls]||0)+1;
+  });
+  // Remove 'No date' if too many
+  if(buckets['No date'] && Object.keys(buckets).length>1) delete buckets['No date'];
+  var keys=Object.keys(buckets).filter(function(k){return k!=='No date';}).sort();
+  if(buckets['No date']) keys.push('No date');
+  var totals=keys.map(function(k){return STATUSES.reduce(function(a,s){return a+(buckets[k][s]||0);},0);});
+
+  destroyChart(chartId);
+  var canvas=document.getElementById(chartId);
+  if(!canvas) return;
+  chartRegistry[chartId]=new Chart(canvas,{
+    type:'bar',plugins:[countLabelPlugin],
+    data:{labels:keys.map(function(k){return k==='No date'?'No date':fmtKey(k,st.mode);}),
+      datasets:STATUSES.map(function(s){return {
+        label:s,data:keys.map(function(k){return buckets[k][s]||0;}),
+        backgroundColor:keys.map(function(k){
+          var base=LEAD_COLORS[s]||'#888';
+          if(st.barKey&&st.status) return (k===st.barKey&&s===st.status)?base:base+'40';
+          if(st.barKey) return k===st.barKey?base:base+'40';
+          if(st.status) return s===st.status?base:base+'40';
+          return base;
+        }),borderRadius:3,borderSkipped:false};})},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:function(ctx){return keys[ctx[0].dataIndex]==='No date'?'No date':fmtKey(keys[ctx[0].dataIndex],st.mode);},
+        label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},
+        afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}
+      }}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},
+      onClick:function(e,els){
+        if(!els.length){st.barKey=null;st.status=null;drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,prod,leads,document.getElementById('leads-tbody-'+prodKey)?'leads-tbody-'+prodKey:null);return;}
+        var ck=keys[els[0].index],cs=STATUSES[els[0].datasetIndex];
+        if(st.barKey===ck&&st.status===cs){st.barKey=null;st.status=null;}else{st.barKey=ck;st.status=cs;}
+        drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,prod,leads,'leads-tbody-'+prodKey);
+      },
+      onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}
+    }
+  });
+  buildStatsStrip(keys.filter(function(k){return k!=='No date';}),totals,st.mode,statsId);
+  var legendEl=document.getElementById('lleads-legend-'+prodKey);
+  if(legendEl) legendEl.innerHTML=['SAL','DG Qualified','Discovery Set','In-Progress'].map(function(s){
+    return '<div class="legend-item"><div class="legend-dot" style="background:'+(LEAD_COLORS[s]||'#888')+'"></div>'+s+'</div>';
+  }).join('');
+}
+
+function drawLeadsTable(prodKey,prod,leads,tbodyId){
+  var st=leadsState[prodKey];
+  if(!tbodyId) tbodyId='leads-tbody-'+prodKey;
+  var rows=leads.filter(function(l){
+    if(st.status&&l['Lead Status']!==st.status) return false;
+    if(st.owner!=='all'&&l['Lead Owner']!==st.owner) return false;
+    if(st.source!=='all'&&l['Source Type']!==st.source) return false;
+    if(st.search){var q=st.search.toLowerCase();if(!(l['First Name']+' '+l['Last Name']+' '+(l['Company / Account']||'')).toLowerCase().includes(q)) return false;}
+    return true;
+  });
+  var countEl=document.getElementById('lcount-'+prodKey);
+  var titleEl=document.getElementById('ltitle-'+prodKey);
+  if(countEl) countEl.textContent=rows.length;
+  if(titleEl) titleEl.textContent=st.status?st.status+' leads':'All Leads';
+  var chipEl=document.getElementById('lchip-'+prodKey);
+  if(chipEl) chipEl.innerHTML=st.status?'<div style="padding-bottom:10px"><span class="filter-chip"><span>'+st.status+'</span><button onclick="clearLeadFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
+  var tbody=document.getElementById(tbodyId);
+  var emptyEl=document.getElementById('lempty-'+prodKey);
+  if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
+  if(emptyEl)emptyEl.style.display='none';
+  if(tbody) tbody.innerHTML=rows.map(function(l,i){
+    return '<tr onclick="openLeadDrawer(\''+prodKey+'\','+leads.indexOf(l)+')">'+
+      '<td class="td-name">'+(l['First Name']||'')+' '+(l['Last Name']||'')+'</td>'+
+      '<td class="td-muted">'+(l['Company / Account']||'')+'</td>'+
+      '<td class="td-sm">'+(l['Title']||'—')+'</td>'+
+      '<td style="white-space:nowrap;font-size:12px">'+(l['Lead Owner']||'').split(' ')[0]+'</td>'+
+      '<td><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></td>'+
+      '<td>'+doneBadge(l['Discovery Done'])+'</td>'+
+      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['discovery meeting date']||'—')+'</td>'+
+      '<td>'+doneBadge(l['Sales Intro Done'])+'</td>'+
+      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['Sales Intro Date']||'—')+'</td>'+
+      '<td>'+srcBadge(l['Source Type']||'Inbound')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+window.clearLeadFilter=function(prodKey){ if(leadsState[prodKey]){leadsState[prodKey].status=null;leadsState[prodKey].barKey=null;} renderCurrentView(); };
+
+window.openLeadDrawer=function(prodKey,idx){
+  var prod=PRODS[prodKey];
+  var leads=ALL_LEADS.filter(prod.leadFilter);
+  var l=leads[idx]; if(!l) return;
+  var dd=l['Discovery Done']==='1',sd=l['Sales Intro Done']==='1';
+  document.getElementById('d-name').textContent=(l['First Name']||'')+' '+(l['Last Name']||'');
+  document.getElementById('d-company').textContent=l['Company / Account']||'';
+  document.getElementById('drawer-body').innerHTML=
+    '<div class="field-group"><div class="field-label">Contact info</div>'+
+      '<div class="field-row"><span class="field-key">Title</span><span class="field-val">'+(l['Title']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Email</span><span class="field-val email">'+(l['Email']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Lead owner</span><span class="field-val">'+(l['Lead Owner']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Source</span><span class="field-val">'+srcBadge(l['Source Type']||'Inbound')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Vertical</span><span class="field-val">'+(l['Vertical']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></span></div>'+
+    '</div>'+
+    '<div class="field-group"><div class="field-label">Activity</div>'+
+      '<div class="act-grid">'+
+        '<div class="act-card"><div class="act-card-label">Discovery</div><div class="act-card-val">'+doneBadge(l['Discovery Done'])+'</div><div class="act-card-date">'+(l['discovery meeting date']||'No date')+'</div></div>'+
+        '<div class="act-card"><div class="act-card-label">Sales intro</div><div class="act-card-val">'+doneBadge(l['Sales Intro Done'])+'</div><div class="act-card-date">'+(l['Sales Intro Date']||'No date')+'</div></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="field-group"><div class="field-label">Timeline</div><div class="timeline">'+
+      '<div class="tl-item"><div class="tl-dot done"></div><div><div class="tl-text">Lead created</div></div></div>'+
+      '<div class="tl-item"><div class="tl-dot '+(dd?'done':'pending')+'"></div><div><div class="tl-text" style="color:'+(dd?'#0e7b4c':'#9090b0')+'">Discovery '+(dd?'✓ done':'— not done')+'</div>'+(l['discovery meeting date']?'<div class="tl-date">'+l['discovery meeting date']+'</div>':'')+'</div></div>'+
+      '<div class="tl-item"><div class="tl-dot '+(sd?'done':'pending')+'"></div><div><div class="tl-text" style="color:'+(sd?'#0e7b4c':'#9090b0')+'">Sales intro '+(sd?'✓ done':'— not done')+'</div>'+(l['Sales Intro Date']?'<div class="tl-date">'+l['Sales Intro Date']+'</div>':'')+'</div></div>'+
+      (l['Lead Status']==='SAL'?'<div class="tl-item"><div class="tl-dot sal"></div><div><div class="tl-text" style="color:#301894;font-weight:600">Became SAL ✓</div></div></div>':'')+
+    '</div></div>'+
+    (l['Disqualified reason']?'<div class="field-group"><div class="field-label">Disqualified reason</div><div style="font-size:12px;padding:10px 12px;background:#fee2e2;border-radius:6px;border:1px solid rgba(185,28,28,0.15)">'+l['Disqualified reason']+'</div></div>':'');
+  document.getElementById('drawer-overlay').classList.add('open');
+};
+
+// ════════════════════════════════════════
+// SAL TAB
+// ════════════════════════════════════════
+var salState={};
+
+function renderSALTab(prodKey,prod,sal){
+  var el=document.getElementById('panel-'+prodKey+'-sal');
+  var chartId='sal-chart-'+prodKey;
+  var statsId='sal-stats-'+prodKey;
+
+  if(!salState[prodKey]){ salState[prodKey]={mode:'monthly',barKey:null,terr:null,terrF:'all',stageF:'all',search:''}; }
+  var st=salState[prodKey];
+  var territories=[...new Set(sal.map(function(s){return s['Territory']||'';}))].filter(Boolean).sort();
+  var stages=[...new Set(sal.map(function(s){return s['Stage']||'';}))].filter(Boolean).sort();
+
+  var totalAmt=sal.reduce(function(a,s){return a+safeFloat(s['Amount (converted)']);},0);
+  var meCount=sal.filter(function(s){return s['Territory']==='Middle East';}).length;
+
+  el.innerHTML=
+    '<div class="panel-title">'+prod.label+' — SAL</div>'+
+    '<div class="panel-sub">Sales accepted leads converted to opportunities</div>'+
+    '<div class="kpis" id="skpi-'+prodKey+'">'+
+      '<div class="kpi c-blue"><div class="kpi-label">Total SALs</div><div class="kpi-val">'+sal.length+'</div><div class="kpi-sub">'+prod.label+'</div></div>'+
+      '<div class="kpi c-green"><div class="kpi-label">Pipeline value</div><div class="kpi-val">'+fmt(totalAmt)+'</div><div class="kpi-sub">USD converted</div></div>'+
+      '<div class="kpi c-teal"><div class="kpi-label">Middle East</div><div class="kpi-val">'+meCount+'</div><div class="kpi-sub">'+Math.round(meCount/Math.max(sal.length,1)*100)+'% of total</div></div>'+
+      '<div class="kpi c-amber"><div class="kpi-label">Territories</div><div class="kpi-val">'+territories.length+'</div><div class="kpi-sub">'+stages.length+' stages active</div></div>'+
+    '</div>'+
+    '<div class="chart-card">'+
+      '<div class="chart-header">'+
+        '<div><div class="chart-title">SALs converted over time</div><div class="chart-hint">Click a bar segment to filter by territory · click again to clear</div></div>'+
+        '<div class="pill-group" id="smode-'+prodKey+'">'+
+          '<button class="pill" data-v="weekly">Weekly</button>'+
+          '<button class="pill" data-v="biweekly">Bi-weekly</button>'+
+          '<button class="pill active" data-v="monthly">Monthly</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="position:relative;height:260px;"><canvas id="'+chartId+'"></canvas></div>'+
+      '<div class="stats-strip" id="'+statsId+'"></div>'+
+      '<div class="legend" id="sal-legend-'+prodKey+'"></div>'+
+    '</div>'+
+    '<div class="table-card">'+
+      '<div class="table-hdr">'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+          '<span class="table-title" id="stitle-'+prodKey+'">All SALs</span>'+
+          '<span class="table-count" id="scount-'+prodKey+'">0</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<select class="sel" id="sterrF-'+prodKey+'"><option value="all">All territories</option>'+territories.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('')+'</select>'+
+          '<select class="sel" id="sstageF-'+prodKey+'"><option value="all">All stages</option>'+stages.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('')+'</select>'+
+          '<input class="search-box" id="ssearch-'+prodKey+'" placeholder="Search company or opp…">'+
+        '</div>'+
+      '</div>'+
+      '<div id="schip-'+prodKey+'" style="padding:0 20px"></div>'+
+      '<div class="tbl-wrap"><table>'+
+        '<thead><tr><th>Name</th><th>Company</th><th>Opportunity</th><th>Type</th><th>Territory</th><th>Stage</th><th>Owner</th><th>Amount</th><th>Close Date</th><th>Converted</th></tr></thead>'+
+        '<tbody id="sal-tbody-'+prodKey+'"></tbody>'+
+      '</table><div id="sempty-'+prodKey+'" class="empty" style="display:none">No SALs match your filters</div></div>'+
+    '</div>';
+
+  document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(btn){
+    btn.onclick=function(){
+      st.mode=this.dataset.v; st.barKey=null; st.terr=null;
+      document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});
+      this.classList.add('active');
+      drawSALChart(prodKey,prod,sal,chartId,statsId,territories);
+      drawSALTable(prodKey,sal);
+    };
+  });
+  document.getElementById('sterrF-'+prodKey).onchange=function(){ st.terrF=this.value; drawSALTable(prodKey,sal); };
+  document.getElementById('sstageF-'+prodKey).onchange=function(){ st.stageF=this.value; drawSALTable(prodKey,sal); };
+  document.getElementById('ssearch-'+prodKey).oninput=function(){ st.search=this.value.trim(); drawSALTable(prodKey,sal); };
+
+  drawSALChart(prodKey,prod,sal,chartId,statsId,territories);
+  drawSALTable(prodKey,sal);
+}
+
+function drawSALChart(prodKey,prod,sal,chartId,statsId,territories){
+  var st=salState[prodKey];
+  var buckets={};
+  sal.forEach(function(s){
+    var k=getKey(s['Converted Date'],st.mode); if(!k) return;
+    if(!buckets[k]){buckets[k]={};territories.forEach(function(t){buckets[k][t]=0;});}
+    var t=s['Territory']||'Unknown';
+    buckets[k][t]=(buckets[k][t]||0)+1;
+  });
+  var keys=Object.keys(buckets).sort();
+  var totals=keys.map(function(k){return territories.reduce(function(a,t){return a+(buckets[k][t]||0);},0);});
+
+  destroyChart(chartId);
+  var canvas=document.getElementById(chartId); if(!canvas) return;
+  chartRegistry[chartId]=new Chart(canvas,{
+    type:'bar',plugins:[countLabelPlugin],
+    data:{labels:keys.map(function(k){return fmtKey(k,st.mode);}),
+      datasets:territories.map(function(t){return{
+        label:t,data:keys.map(function(k){return buckets[k][t]||0;}),
+        backgroundColor:keys.map(function(k){var base=TERR_COLORS[t]||'#888';
+          if(st.barKey&&st.terr) return (k===st.barKey&&t===st.terr)?base:base+'40';
+          if(st.barKey) return k===st.barKey?base:base+'40';
+          if(st.terr) return t===st.terr?base:base+'40'; return base;}),
+        borderRadius:3,borderSkipped:false};})},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:function(ctx){return fmtKey(keys[ctx[0].dataIndex],st.mode);},
+        label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},
+        afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}
+      }}},
+      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},
+      onClick:function(e,els){
+        if(!els.length){st.barKey=null;st.terr=null;drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);return;}
+        var ck=keys[els[0].index],ct=territories[els[0].datasetIndex];
+        if(st.barKey===ck&&st.terr===ct){st.barKey=null;st.terr=null;}else{st.barKey=ck;st.terr=ct;}
+        drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);
+      },
+      onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}
+    }
+  });
+  buildStatsStrip(keys,totals,st.mode,statsId);
+  var legEl=document.getElementById('sal-legend-'+prodKey);
+  if(legEl) legEl.innerHTML=territories.map(function(t){return '<div class="legend-item"><div class="legend-dot" style="background:'+(TERR_COLORS[t]||'#888')+'"></div>'+t+'</div>';}).join('');
+}
+
+function drawSALTable(prodKey,sal){
+  var st=salState[prodKey];
+  var rows=sal.filter(function(s){
+    if(st.terr&&s['Territory']!==st.terr) return false;
+    if(st.terrF!=='all'&&s['Territory']!==st.terrF) return false;
+    if(st.stageF!=='all'&&s['Stage']!==st.stageF) return false;
+    if(st.search){var q=st.search.toLowerCase();if(!(s['First Name']+' '+s['Last Name']+' '+(s['Company / Account']||'')+' '+(s['Opportunity Name']||'')).toLowerCase().includes(q)) return false;}
+    return true;
+  });
+  var countEl=document.getElementById('scount-'+prodKey);
+  var titleEl=document.getElementById('stitle-'+prodKey);
+  if(countEl) countEl.textContent=rows.length;
+  if(titleEl) titleEl.textContent=st.terr?st.terr+' SALs':'All SALs';
+  var chipEl=document.getElementById('schip-'+prodKey);
+  if(chipEl) chipEl.innerHTML=st.terr?'<div style="padding-bottom:10px"><span class="filter-chip">'+st.terr+'<button onclick="clearSALFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
+  var tbody=document.getElementById('sal-tbody-'+prodKey);
+  var emptyEl=document.getElementById('sempty-'+prodKey);
+  if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
+  if(emptyEl)emptyEl.style.display='none';
+  if(tbody) tbody.innerHTML=rows.map(function(s){
+    var amt=safeFloat(s['Amount (converted)']);
+    var tc=TERR_COLORS[s['Territory']]||'#888';
+    return '<tr onclick="openSALDrawer(\''+prodKey+'\','+sal.indexOf(s)+')">'+
+      '<td class="td-name">'+(s['First Name']||'')+' '+(s['Last Name']||'')+'</td>'+
+      '<td class="td-muted">'+(s['Company / Account']||'')+'</td>'+
+      '<td class="td-sm">'+(s['Opportunity Name']||'')+'</td>'+
+      '<td>'+salTypeBadge(s['Opportunity Type']||'')+'</td>'+
+      '<td><span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+(s['Territory']||'—')+'</span></td>'+
+      '<td>'+stageBadge(s['Stage']||'')+'</td>'+
+      '<td style="white-space:nowrap;font-size:11px">'+(s['Opportunity Owner']||'')+'</td>'+
+      '<td class="td-amt">'+(amt>0?fmtFull(amt):'—')+'</td>'+
+      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Oppt Close Date']||'')+'</td>'+
+      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Converted Date']||'')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+window.clearSALFilter=function(prodKey){ if(salState[prodKey]){salState[prodKey].terr=null;salState[prodKey].barKey=null;} renderCurrentView(); };
+
+window.openSALDrawer=function(prodKey,idx){
+  var prod=PRODS[prodKey];
+  var sal=ALL_SAL.filter(prod.salFilter);
+  var s=sal[idx]; if(!s) return;
+  var amt=safeFloat(s['Amount (converted)']);
+  document.getElementById('d-name').textContent=(s['First Name']||'')+' '+(s['Last Name']||'');
+  document.getElementById('d-company').textContent=s['Company / Account']||'';
+  document.getElementById('drawer-body').innerHTML=
+    '<div class="field-group"><div class="field-label">Contact</div>'+
+      '<div class="field-row"><span class="field-key">Email</span><span class="field-val email">'+(s['Email']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Lead owner</span><span class="field-val">'+(s['Lead Owner']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Territory</span><span class="field-val">'+(s['Territory']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Converted</span><span class="field-val">'+(s['Converted Date']||'—')+'</span></div>'+
+    '</div>'+
+    '<div class="field-group"><div class="field-label">Opportunity</div>'+
+      '<div class="field-row"><span class="field-key">Name</span><span class="field-val" style="text-align:right;max-width:220px">'+(s['Opportunity Name']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Type</span><span class="field-val">'+salTypeBadge(s['Opportunity Type']||'')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Stage</span><span class="field-val">'+stageBadge(s['Stage']||'')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Owner</span><span class="field-val">'+(s['Opportunity Owner']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Amount</span><span class="field-val" style="font-weight:700;color:'+(amt>0?'#0e7b4c':'#9090b0')+'">'+(amt>0?fmtFull(amt):' Not set')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Close date</span><span class="field-val">'+(s['Oppt Close Date']||'—')+'</span></div>'+
+    '</div>';
+  document.getElementById('drawer-overlay').classList.add('open');
+};
+
+// ════════════════════════════════════════
+// DEALS TAB
+// ════════════════════════════════════════
+var dealsState={};
+
+function renderDealsTab(prodKey,prod,deals){
+  var el=document.getElementById('panel-'+prodKey+'-deals');
+  var chartId='deals-chart-'+prodKey;
+
+  if(!dealsState[prodKey]){ dealsState[prodKey]={stage:null,terrF:'all',typeF:'all',fiscalF:'all',search:''}; }
+  var st=dealsState[prodKey];
+
+  var active=deals.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;});
+  var won=deals.filter(function(d){return d['Stage']==='Closed Won';});
+  var totalPipe=active.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var wonAmt=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var territories=[...new Set(deals.map(function(d){return d['Territory']||'';}))].filter(Boolean).sort();
+  var fiscals=[...new Set(deals.map(function(d){return d['Fiscal Period']||'';}))].filter(Boolean).sort();
+  var weighted=active.reduce(function(a,d){return a+safeFloat(d['Amount'])*safeFloat(d['Probability (%)'])/100;},0);
+  var withAmt=active.filter(function(d){return safeFloat(d['Amount'])>0;}).length;
+
+  el.innerHTML=
+    '<div class="panel-title">'+prod.label+' — Deals</div>'+
+    '<div class="panel-sub">All pipeline deals · click bars to filter table</div>'+
+    '<div class="kpis">'+
+      '<div class="kpi c-blue"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+deals.length+'</div><div class="kpi-sub">'+active.length+' active</div></div>'+
+      '<div class="kpi c-green"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+withAmt+' with amount</div></div>'+
+      '<div class="kpi c-teal"><div class="kpi-label">Closed Won</div><div class="kpi-val">'+fmt(wonAmt)+'</div><div class="kpi-sub">'+won.length+' deals</div></div>'+
+      '<div class="kpi c-amber"><div class="kpi-label">Weighted Pipeline</div><div class="kpi-val">'+fmt(weighted)+'</div><div class="kpi-sub">by probability</div></div>'+
+    '</div>'+
+    '<div class="chart-card">'+
+      '<div class="chart-header">'+
+        '<div><div class="chart-title">Pipeline by stage — amount &amp; deal count</div><div class="chart-hint">Click a bar to filter the table below</div></div>'+
+        (territories.length?'<select class="sel" id="dterrChart-'+prodKey+'"><option value="all">All territories</option>'+territories.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('')+'</select>':'')+'</div>'+
+      '<div style="position:relative;height:280px;"><canvas id="'+chartId+'"></canvas></div>'+
+      '<div class="stats-strip" id="dstats-'+prodKey+'"></div>'+
+    '</div>'+
+    '<div class="table-card">'+
+      '<div class="table-hdr">'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+          '<span class="table-title" id="dtitle-'+prodKey+'">All Deals</span>'+
+          '<span class="table-count" id="dcount-'+prodKey+'">0</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          (territories.length?'<select class="sel" id="dterrF-'+prodKey+'"><option value="all">All territories</option>'+territories.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('')+'</select>':'')+
+          '<select class="sel" id="dtypeF-'+prodKey+'"><option value="all">All types</option><option value="New Business">New Business</option><option value="Expansion">Expansion</option><option value="Renewal">Renewal</option></select>'+
+          (fiscals.length?'<select class="sel" id="dfiscalF-'+prodKey+'"><option value="all">All quarters</option>'+fiscals.map(function(q){return '<option value="'+q+'">'+q+'</option>';}).join('')+'</select>':'')+
+          '<input class="search-box" id="dsearch-'+prodKey+'" placeholder="Search account or opp…">'+
+        '</div>'+
+      '</div>'+
+      '<div id="dchip-'+prodKey+'" style="padding:0 20px"></div>'+
+      '<div class="tbl-wrap"><table>'+
+        '<thead><tr><th>Account</th><th>Opportunity</th><th>Vertical</th><th>Stage</th><th>Amount</th><th>Prob%</th><th>Type</th><th>Owner</th><th>Close Date</th><th>Next Step</th></tr></thead>'+
+        '<tbody id="deals-tbody-'+prodKey+'"></tbody>'+
+      '</table><div id="dempty-'+prodKey+'" class="empty" style="display:none">No deals match your filters</div></div>'+
+    '</div>';
+
+  // wire territory chart filter
+  var dterrChartEl=document.getElementById('dterrChart-'+prodKey);
+  if(dterrChartEl) dterrChartEl.onchange=function(){ drawDealsChart(prodKey,prod,deals,chartId); };
+
+  var dterrFEl=document.getElementById('dterrF-'+prodKey);
+  if(dterrFEl) dterrFEl.onchange=function(){ st.terrF=this.value; drawDealsTable(prodKey,deals); };
+  document.getElementById('dtypeF-'+prodKey).onchange=function(){ st.typeF=this.value; drawDealsTable(prodKey,deals); };
+  var dfiscalEl=document.getElementById('dfiscalF-'+prodKey);
+  if(dfiscalEl) dfiscalEl.onchange=function(){ st.fiscalF=this.value; drawDealsTable(prodKey,deals); };
+  document.getElementById('dsearch-'+prodKey).oninput=function(){ st.search=this.value.trim(); drawDealsTable(prodKey,deals); };
+
+  drawDealsChart(prodKey,prod,deals,chartId);
+  drawDealsTable(prodKey,deals);
+}
+
+function drawDealsChart(prodKey,prod,deals,chartId){
+  var st=dealsState[prodKey];
+  var terrChartEl=document.getElementById('dterrChart-'+prodKey);
+  var terrFilter=terrChartEl?terrChartEl.value:'all';
+  var data=terrFilter==='all'?deals:deals.filter(function(d){return d['Territory']===terrFilter;});
+  var stageAmts={},stageCounts={};
+  STAGE_ORDER.forEach(function(s){stageAmts[s]=0;stageCounts[s]=0;});
+  data.forEach(function(d){
+    var s=d['Stage'],amt=safeFloat(d['Amount']);
+    stageAmts[s]=(stageAmts[s]||0)+amt; stageCounts[s]=(stageCounts[s]||0)+1;
+  });
+  var showStages=STAGE_ORDER.filter(function(s){return stageCounts[s]>0;});
+  var amounts=showStages.map(function(s){return stageAmts[s]||0;});
+  var counts=showStages.map(function(s){return stageCounts[s]||0;});
+
+  // label plugin for deals
+  var dealLabelPlugin={id:'dealLabels',afterDatasetsDraw:function(chart){
+    var ctx=chart.ctx;
+    chart.data.labels.forEach(function(lbl,i){
+      var bar=chart.getDatasetMeta(0).data[i]; if(!bar) return;
+      var cnt=counts[i]; if(!cnt) return;
+      var amt=amounts[i];
+      var amtLabel=amt>0?fmt(amt):'';
+      ctx.save();ctx.textAlign='center';ctx.fillStyle='#1a1a2e';
+      if(amtLabel){
+        ctx.font='bold 11px -apple-system,sans-serif';ctx.textBaseline='bottom';ctx.fillText(amtLabel,bar.x,bar.y-14);
+        ctx.font='10px -apple-system,sans-serif';ctx.fillStyle='#5a5a7a';ctx.fillText(cnt+' deal'+(cnt!==1?'s':''),bar.x,bar.y-2);
+      } else {
+        ctx.font='bold 11px -apple-system,sans-serif';ctx.textBaseline='bottom';ctx.fillText(cnt+' deal'+(cnt!==1?'s':''),bar.x,bar.y-3);
+      }
+      ctx.restore();
+    });
+  }};
+
+  destroyChart(chartId);
+  var canvas=document.getElementById(chartId); if(!canvas) return;
+  chartRegistry[chartId]=new Chart(canvas,{
+    type:'bar',plugins:[dealLabelPlugin],
+    data:{labels:showStages,datasets:[{
+      label:'Amount (USD)',data:amounts,
+      backgroundColor:showStages.map(function(s){return st.stage?(s===st.stage?STAGE_COLORS[s]:STAGE_COLORS[s]+'55'):STAGE_COLORS[s]||'#888';}),
+      borderRadius:6,borderSkipped:false
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:40}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        title:function(ctx){return ctx[0].label;},
+        label:function(ctx){return ' Amount: '+fmtFull(ctx.raw);},
+        afterBody:function(items){var s=showStages[items[0].dataIndex];return[' Deals: '+stageCounts[s],' Avg: '+fmtFull(stageCounts[s]?stageAmts[s]/stageCounts[s]:0)];}
+      }}},
+      scales:{x:{grid:{display:false},ticks:{color:'#9090b0',font:{size:11}}},y:{beginAtZero:true,grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#9090b0',font:{size:11},callback:function(v){return fmt(v);}}}},
+      onClick:function(e,els){
+        if(!els.length){st.stage=null;drawDealsChart(prodKey,prod,deals,chartId);drawDealsTable(prodKey,deals);return;}
+        var s=showStages[els[0].index];
+        st.stage=st.stage===s?null:s;
+        drawDealsChart(prodKey,prod,deals,chartId);drawDealsTable(prodKey,deals);
+      },
+      onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}
+    }
+  });
+
+  // stats
+  var totalAmt=amounts.reduce(function(a,b){return a+b;},0);
+  var totalDeals=counts.reduce(function(a,b){return a+b;},0);
+  var wonAmt=stageAmts['Closed Won']||0,wonCnt=stageCounts['Closed Won']||0;
+  var commitAmt=(stageAmts['Commitment']||0)+(stageAmts['Procurement']||0);
+  var statsEl=document.getElementById('dstats-'+prodKey);
+  if(statsEl) statsEl.innerHTML=
+    '<div class="stat-item"><div class="stat-label">Total pipeline</div><div class="stat-val">'+fmt(totalAmt)+'</div><div class="stat-sub">'+totalDeals+' deals</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Closed Won</div><div class="stat-val" style="color:#0e7b4c">'+fmt(wonAmt)+'</div><div class="stat-sub">'+wonCnt+' deal'+(wonCnt!==1?'s':'')+'</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Near close</div><div class="stat-val" style="color:#0f766e">'+fmt(commitAmt)+'</div><div class="stat-sub">Commit + Procurement</div></div>'+
+    '<div class="stat-item"><div class="stat-label">Opportunity</div><div class="stat-val" style="color:#4f7bff">'+fmt(stageAmts['Opportunity']||0)+'</div><div class="stat-sub">'+(stageCounts['Opportunity']||0)+' deals</div></div>';
+}
+
+function drawDealsTable(prodKey,deals){
+  var st=dealsState[prodKey];
+  var rows=deals.filter(function(d){
+    if(st.stage&&d['Stage']!==st.stage) return false;
+    if(st.terrF!=='all'&&d['Territory']!==st.terrF) return false;
+    if(st.typeF!=='all'&&d['Type']!==st.typeF) return false;
+    if(st.fiscalF!=='all'&&d['Fiscal Period']!==st.fiscalF) return false;
+    if(st.search){var q=st.search.toLowerCase();if(!(d['Account Name']+' '+(d['Opportunity Name']||'')).toLowerCase().includes(q)) return false;}
+    return true;
+  });
+  var countEl=document.getElementById('dcount-'+prodKey);
+  var titleEl=document.getElementById('dtitle-'+prodKey);
+  if(countEl) countEl.textContent=rows.length;
+  if(titleEl) titleEl.textContent=st.stage?st.stage+' deals':'All Deals';
+  var chipEl=document.getElementById('dchip-'+prodKey);
+  if(chipEl) chipEl.innerHTML=st.stage?'<div style="padding-bottom:10px"><span class="filter-chip"><span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:'+(STAGE_COLORS[st.stage]||'#888')+';display:inline-block"></span>'+st.stage+'</span><button onclick="clearDealFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
+  var tbody=document.getElementById('deals-tbody-'+prodKey);
+  var emptyEl=document.getElementById('dempty-'+prodKey);
+  if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
+  if(emptyEl)emptyEl.style.display='none';
+  if(tbody) tbody.innerHTML=rows.map(function(d){
+    var amt=safeFloat(d['Amount']);
+    var prob=parseInt(d['Probability (%)']||0);
+    var probColor=prob>=75?'#0e7b4c':prob>=40?'#301894':prob>=20?'#a05a00':'#9090b0';
+    var amtStr=amt>0?fmtFull(amt)+' '+(d['Amount Currency']||'USD'):'<span style="color:#9090b0">—</span>';
+    var tc=TERR_COLORS[d['Territory']]||'#888';
+    return '<tr onclick="openDealDrawer(\''+prodKey+'\','+deals.indexOf(d)+')">'+
+      '<td class="td-name">'+(d['Account Name']||'')+'</td>'+
+      '<td class="td-sm" style="max-width:180px">'+(d['Opportunity Name']||'')+'</td>'+
+      '<td style="font-size:11px;color:#5a5a7a">'+(d['Vertical']||'—')+'</td>'+
+      '<td>'+stageBadge(d['Stage']||'')+'</td>'+
+      '<td class="td-amt">'+amtStr+'</td>'+
+      '<td style="color:'+probColor+';font-weight:600">'+prob+'%</td>'+
+      '<td style="font-size:11px;color:#9090b0">'+(d['Type']||'—')+'</td>'+
+      '<td style="white-space:nowrap;font-size:11px">'+(d['Opportunity Owner']||'')+'</td>'+
+      '<td style="white-space:nowrap;color:#9090b0;font-size:11px">'+(d['Close Date']||'')+'</td>'+
+      '<td class="td-sm">'+(d['Next Step']||'—')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+window.clearDealFilter=function(prodKey){ if(dealsState[prodKey]) dealsState[prodKey].stage=null; renderCurrentView(); };
+
+window.openDealDrawer=function(prodKey,idx){
+  var prod=PRODS[prodKey];
+  var deals=ALL_DEALS.filter(prod.dealFilter);
+  var d=deals[idx]; if(!d) return;
+  var amt=safeFloat(d['Amount']);
+  var prob=parseInt(d['Probability (%)']||0);
+  var probColor=prob>=75?'#0e7b4c':prob>=40?'#301894':prob>=20?'#a05a00':'#9090b0';
+  document.getElementById('d-name').textContent=d['Account Name']||'';
+  document.getElementById('d-company').textContent=d['Opportunity Name']||'';
+  document.getElementById('drawer-body').innerHTML=
+    '<div class="field-group"><div class="field-label">Deal overview</div>'+
+      '<div class="field-row"><span class="field-key">Stage</span><span class="field-val">'+stageBadge(d['Stage']||'')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Vertical</span><span class="field-val">'+(d['Vertical']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Territory</span><span class="field-val">'+(d['Territory']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Type</span><span class="field-val">'+(d['Type']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Fiscal period</span><span class="field-val">'+(d['Fiscal Period']||'—')+'</span></div>'+
+    '</div>'+
+    '<div class="field-group"><div class="field-label">Financials</div>'+
+      '<div class="field-row"><span class="field-key">Amount</span><span class="field-val" style="font-size:18px;font-weight:700;color:'+(amt>0?'#0e7b4c':'#9090b0')+'">'+(amt>0?fmtFull(amt)+' '+(d['Amount Currency']||'USD'):'Not set')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Probability</span><span class="field-val" style="color:'+probColor+';font-weight:700">'+prob+'%</span></div>'+
+      '<div class="field-row"><span class="field-key">Weighted value</span><span class="field-val" style="font-weight:600">'+fmtFull(amt*prob/100)+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Age (days)</span><span class="field-val">'+Math.round(safeFloat(d['Age']))+'</span></div>'+
+    '</div>'+
+    '<div class="field-group"><div class="field-label">Ownership &amp; dates</div>'+
+      '<div class="field-row"><span class="field-key">Owner</span><span class="field-val">'+(d['Opportunity Owner']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Owner role</span><span class="field-val">'+(d['Owner Role']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Created</span><span class="field-val">'+(d['Created Date']||'—')+'</span></div>'+
+      '<div class="field-row"><span class="field-key">Close date</span><span class="field-val">'+(d['Close Date']||'—')+'</span></div>'+
+    '</div>'+
+    (d['Next Step']?'<div class="field-group"><div class="field-label">Next step</div><div style="font-size:12px;padding:10px 12px;background:#ede8ff;border-radius:6px;border:1px solid rgba(48,24,148,0.2);color:#301894;line-height:1.6">'+d['Next Step']+'</div></div>':'');
+  document.getElementById('drawer-overlay').classList.add('open');
+};
+
+// ════════════════════════════════════════
+// INIT — fetch data.json
+// ════════════════════════════════════════
+window.onload=function(){
+  fetch('data.json?t='+Date.now())
+    .then(function(r){
+      if(!r.ok) throw new Error('data.json not found (HTTP '+r.status+')');
+      return r.json();
+    })
+    .then(function(payload){
+      ALL_LEADS = payload.leads  || [];
+      ALL_SAL   = payload.sal    || [];
+      ALL_DEALS = payload.deals  || [];
+
+      // Update header
+      var meta=document.getElementById('header-meta');
+      if(meta&&payload.updated) meta.textContent='Updated: '+payload.updated;
+
+      // Tab pills
+      document.getElementById('pill-overall').textContent=ALL_DEALS.length+' deals';
+      document.getElementById('pill-cmms').textContent=ALL_DEALS.filter(PRODS.cmms.dealFilter).length;
+      document.getElementById('pill-aisuit').textContent=ALL_DEALS.filter(PRODS.aisuit.dealFilter).length;
+      document.getElementById('pill-others').textContent=ALL_DEALS.filter(PRODS.others.dealFilter).length;
+
+      renderOverall();
+
+      // Hide loader
+      var overlay=document.getElementById('loading-overlay');
+      if(overlay){overlay.classList.add('hidden');setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay);},400);}
+    })
+    .catch(function(err){
+      var overlay=document.getElementById('loading-overlay');
+      if(overlay) overlay.innerHTML='<div style="text-align:center;padding:40px"><div style="font-size:48px;margin-bottom:16px">⚠️</div>'+
+        '<div style="font-size:16px;font-weight:600;color:#1a1a2e;margin-bottom:8px">Could not load dashboard data</div>'+
+        '<div style="font-size:13px;color:#9090b0;margin-bottom:20px">'+err.message+'</div>'+
+        '<div style="font-size:12px;color:#9090b0">Run <strong>buildAndDeploy</strong> in Apps Script to push data.json to GitHub</div></div>';
+      console.error('Dashboard load error:',err);
+    });
+};
+</script>
+</body>
+</html>
