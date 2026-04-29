@@ -350,8 +350,6 @@ function parseDate(s){
   var str=s.toString().split(',')[0].trim();
   var iso=str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(iso){var d=new Date(+iso[1],+iso[2]-1,+iso[3]);return isNaN(d)?null:d;}
-  var mdy=str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if(mdy){var p1=+mdy[1],p2=+mdy[2],yr=+mdy[3];if(yr<2020||yr>2035)return null;var m2,d2;if(p1>12){m2=p2-1;d2=p1;}else{m2=p1-1;d2=p2;}var dt=new Date(yr,m2,d2);return isNaN(dt)?null:dt;}
   return null;
 }
 function getKey(dateStr,mode){
