@@ -598,7 +598,8 @@ function renderLeadsTab(prodKey,prod,leads){
         '</div>'+
       '</div>'+
       '<div id="lchip-'+prodKey+'" style="padding:0 20px"></div>'+
-      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Owner</th><th>Status</th><th>Discovery</th><th>Disc Date</th><th>Sales Intro</th><th>SI Date</th><th>Source</th></tr></thead><tbody id="leads-tbody-'+prodKey+'"></tbody></table><div id="lempty-'+prodKey+'" class="empty" style="display:none">No leads match</div></div>'+
+      '<div style="display:flex;justify-content:flex-end;padding:8px 20px 0"><button onclick="exportCSV(\'leads\',\''+prodKey+'\')" style="font-size:11px;font-weight:600;padding:5px 14px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#fff;color:#301894;cursor:pointer;display:flex;align-items:center;gap:5px">⬇ Export CSV</button></div>'+
+      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Owner</th><th>Status</th><th>Discovery</th><th>Disc Date</th><th>Sales Intro</th><th>SI Date</th><th>Source</th><th>SF Link</th></tr></thead><tbody id="leads-tbody-'+prodKey+'"></tbody></table><div id="lempty-'+prodKey+'" class="empty" style="display:none">No leads match</div></div>'+
     '</div>';
   var sal=leads.filter(function(l){return l['Lead Status']==='SAL';}).length;
   var dg=leads.filter(function(l){return l['Lead Status']==='DG Qualified';}).length;
@@ -635,7 +636,11 @@ function drawLeadsTable(prodKey,leads){
   var tbody=document.getElementById('leads-tbody-'+prodKey);var emptyEl=document.getElementById('lempty-'+prodKey);
   if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
   if(emptyEl)emptyEl.style.display='none';
-  if(tbody)tbody.innerHTML=rows.map(function(l){return '<tr onclick="openLeadDrawer(\''+prodKey+'\','+leads.indexOf(l)+')"><td class="td-name">'+(l['First Name']||'')+' '+(l['Last Name']||'')+'</td><td class="td-muted">'+(l['Company / Account']||'')+'</td><td style="white-space:nowrap;font-size:12px">'+(l['Lead Owner']||'').split(' ')[0]+'</td><td><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></td><td>'+doneBadge(l['Discovery Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['discovery meeting date']||'—')+'</td><td>'+doneBadge(l['Sales Intro Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['Sales Intro Date']||'—')+'</td><td>'+srcBadge(l['Source Type']||'Inbound')+'</td></tr>';}).join('');
+  if(tbody)tbody.innerHTML=rows.map(function(l){
+    var sfUrl=l['SF Link']||l['Salesforce Link']||l['SF URL']||'';
+    var sfCell=sfUrl?'<td><a href="'+sfUrl+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:#301894;font-weight:600;text-decoration:none;padding:2px 8px;background:#ede8ff;border-radius:4px;white-space:nowrap">↗ SF</a></td>':'<td style="color:#ccc;font-size:11px">—</td>';
+    return '<tr onclick="openLeadDrawer(\''+prodKey+'\','+leads.indexOf(l)+')"><td class="td-name">'+(l['First Name']||'')+' '+(l['Last Name']||'')+'</td><td class="td-muted">'+(l['Company / Account']||'')+'</td><td style="white-space:nowrap;font-size:12px">'+(l['Lead Owner']||'').split(' ')[0]+'</td><td><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></td><td>'+doneBadge(l['Discovery Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['discovery meeting date']||'—')+'</td><td>'+doneBadge(l['Sales Intro Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['Sales Intro Date']||'—')+'</td><td>'+srcBadge(l['Source Type']||'Inbound')+'</td>'+sfCell+'</tr>';
+  }).join('');
 }
 window.clearLeadFilter=function(prodKey){if(leadsState[prodKey]){leadsState[prodKey].status=null;leadsState[prodKey].barKey=null;}renderCurrentView();};
 window.openLeadDrawer=function(prodKey,idx){
@@ -651,6 +656,7 @@ window.openLeadDrawer=function(prodKey,idx){
       '<div class="field-row"><span class="field-key">Source</span><span class="field-val">'+srcBadge(l['Source Type']||'Inbound')+'</span></div>'+
       '<div class="field-row"><span class="field-key">Vertical</span><span class="field-val">'+(l['Vertical']||'—')+'</span></div>'+
       '<div class="field-row"><span class="field-key">Status</span><span class="field-val"><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></span></div>'+
+      (l['SF Link']?'<div class="field-row"><span class="field-key">SF Link</span><span class="field-val"><a href="'+l['SF Link']+'" target="_blank" style="color:#301894;font-weight:600;font-size:12px">↗ Open in Salesforce</a></span></div>':'')+
     '</div>'+
     '<div class="field-group"><div class="field-label">Activity</div>'+
       '<div class="act-grid">'+
@@ -709,7 +715,8 @@ function renderSALTab(prodKey,prod,sal){
         '</div>'+
       '</div>'+
       '<div id="schip-'+prodKey+'" style="padding:0 20px"></div>'+
-      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Opportunity</th><th>Type</th><th>Territory</th><th>Stage</th><th>Owner</th><th>Amount</th><th>Close Date</th><th>Converted</th></tr></thead><tbody id="sal-tbody-'+prodKey+'"></tbody></table><div id="sempty-'+prodKey+'" class="empty" style="display:none">No SALs match</div></div>'+
+      '<div style="display:flex;justify-content:flex-end;padding:8px 20px 0"><button onclick="exportCSV(\'sal\',\''+prodKey+'\')" style="font-size:11px;font-weight:600;padding:5px 14px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#fff;color:#301894;cursor:pointer;display:flex;align-items:center;gap:5px">⬇ Export CSV</button></div>'+
+      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Opportunity</th><th>Type</th><th>Territory</th><th>Stage</th><th>Owner</th><th>Amount</th><th>Close Date</th><th>Converted</th><th>SF Link</th></tr></thead><tbody id="sal-tbody-'+prodKey+'"></tbody></table><div id="sempty-'+prodKey+'" class="empty" style="display:none">No SALs match</div></div>'+
     '</div>';
   document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(btn){btn.onclick=function(){st.mode=this.dataset.v;st.barKey=null;st.terr=null;document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});this.classList.add('active');drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);};});
   document.getElementById('sterrF-'+prodKey).onchange=function(){st.terrF=this.value;drawSALTable(prodKey,sal);};
@@ -735,7 +742,12 @@ function drawSALTable(prodKey,sal){
   var tbody=document.getElementById('sal-tbody-'+prodKey);var emptyEl=document.getElementById('sempty-'+prodKey);
   if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
   if(emptyEl)emptyEl.style.display='none';
-  if(tbody)tbody.innerHTML=rows.map(function(s){var amt=safeFloat(s['Amount (converted)']);var tc=TERR_COLORS[s['Territory']]||'#888';return '<tr onclick="openSALDrawer(\''+prodKey+'\','+sal.indexOf(s)+')"><td class="td-name">'+(s['First Name']||'')+' '+(s['Last Name']||'')+'</td><td class="td-muted">'+(s['Company / Account']||'')+'</td><td class="td-sm">'+(s['Opportunity Name']||'')+'</td><td>'+salTypeBadge(s['Opportunity Type']||'')+'</td><td><span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+(s['Territory']||'—')+'</span></td><td>'+stageBadge(s['Stage']||'')+'</td><td style="white-space:nowrap;font-size:11px">'+(s['Opportunity Owner']||'')+'</td><td class="td-amt">'+(amt>0?fmtFull(amt):'—')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Oppt Close Date']||'')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Converted Date']||'')+'</td></tr>';}).join('');
+  if(tbody)tbody.innerHTML=rows.map(function(s){
+    var amt=safeFloat(s['Amount (converted)']);var tc=TERR_COLORS[s['Territory']]||'#888';
+    var sfUrl=s['SF Link']||s['Salesforce Link']||s['SF URL']||'';
+    var sfCell=sfUrl?'<td><a href="'+sfUrl+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:#301894;font-weight:600;text-decoration:none;padding:2px 8px;background:#ede8ff;border-radius:4px;white-space:nowrap">↗ SF</a></td>':'<td style="color:#ccc;font-size:11px">—</td>';
+    return '<tr onclick="openSALDrawer(\''+prodKey+'\','+sal.indexOf(s)+')"><td class="td-name">'+(s['First Name']||'')+' '+(s['Last Name']||'')+'</td><td class="td-muted">'+(s['Company / Account']||'')+'</td><td class="td-sm">'+(s['Opportunity Name']||'')+'</td><td>'+salTypeBadge(s['Opportunity Type']||'')+'</td><td><span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+(s['Territory']||'—')+'</span></td><td>'+stageBadge(s['Stage']||'')+'</td><td style="white-space:nowrap;font-size:11px">'+(s['Opportunity Owner']||'')+'</td><td class="td-amt">'+(amt>0?fmtFull(amt):'—')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Oppt Close Date']||'')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Converted Date']||'')+'</td>'+sfCell+'</tr>';
+  }).join('');
 }
 window.clearSALFilter=function(prodKey){if(salState[prodKey]){salState[prodKey].terr=null;salState[prodKey].barKey=null;}renderCurrentView();};
 window.openSALDrawer=function(prodKey,idx){
@@ -757,6 +769,7 @@ window.openSALDrawer=function(prodKey,idx){
       '<div class="field-row"><span class="field-key">Owner</span><span class="field-val">'+(s['Opportunity Owner']||'—')+'</span></div>'+
       '<div class="field-row"><span class="field-key">Amount</span><span class="field-val" style="font-weight:700;color:'+(amt>0?'#0e7b4c':'#9090b0')+'">'+(amt>0?fmtFull(amt):' Not set')+'</span></div>'+
       '<div class="field-row"><span class="field-key">Close date</span><span class="field-val">'+(s['Oppt Close Date']||'—')+'</span></div>'+
+      (s['SF Link']?'<div class="field-row"><span class="field-key">SF Link</span><span class="field-val"><a href="'+s['SF Link']+'" target="_blank" style="color:#301894;font-weight:600;font-size:12px">↗ Open in Salesforce</a></span></div>':'')+
     '</div>';
   document.getElementById('drawer-overlay').classList.add('open');
 };
@@ -831,8 +844,9 @@ function renderDealsTab(prodKey,prod,deals){
         '</div>'+
       '</div>'+
       '<div id="dchip-'+prodKey+'" style="padding:0 20px"></div>'+
+      '<div style="display:flex;justify-content:flex-end;padding:8px 20px 0"><button onclick="exportCSV(\'deals\',\''+prodKey+'\')" style="font-size:11px;font-weight:600;padding:5px 14px;border-radius:6px;border:1px solid rgba(0,0,0,0.12);background:#fff;color:#301894;cursor:pointer;display:flex;align-items:center;gap:5px">⬇ Export CSV</button></div>'+
       '<div class="tbl-wrap"><table>'+
-        '<thead><tr><th>Account</th><th>Opportunity</th><th>Vertical</th><th>Stage</th><th>Amount</th><th>Prob%</th><th>Type</th><th>Owner</th><th>Close Date</th><th>Next Step</th></tr></thead>'+
+        '<thead><tr><th>Account</th><th>Opportunity</th><th>Vertical</th><th>Stage</th><th>Amount</th><th>Prob%</th><th>Type</th><th>Owner</th><th>Close Date</th><th>Next Step</th><th>SF Link</th></tr></thead>'+
         '<tbody id="deals-tbody-'+prodKey+'"></tbody>'+
       '</table><div id="dempty-'+prodKey+'" class="empty" style="display:none">No deals match</div></div>'+
     '</div>';
@@ -1002,6 +1016,8 @@ function drawDealsTable(prodKey,deals){
     var amt=safeFloat(d['Amount']);var prob=parseInt(d['Probability (%)']||0);
     var probColor=prob>=75?'#0e7b4c':prob>=40?'#301894':prob>=20?'#a05a00':'#9090b0';
     var amtStr=amt>0?fmtFull(amt)+' '+(d['Amount Currency']||'USD'):'<span style="color:#9090b0">—</span>';
+    var sfUrl=d['SF Link']||d['Salesforce Link']||d['SF URL']||'';
+    var sfCell=sfUrl?'<td><a href="'+sfUrl+'" target="_blank" onclick="event.stopPropagation()" style="font-size:11px;color:#301894;font-weight:600;text-decoration:none;padding:2px 8px;background:#ede8ff;border-radius:4px;white-space:nowrap">↗ SF</a></td>':'<td style="color:#ccc;font-size:11px">—</td>';
     return '<tr onclick="openDealDrawer(\''+prodKey+'\','+deals.indexOf(d)+')">'+
       '<td class="td-name">'+(d['Account Name']||'')+'</td>'+
       '<td class="td-sm" style="max-width:180px">'+(d['Opportunity Name']||'')+'</td>'+
@@ -1013,6 +1029,7 @@ function drawDealsTable(prodKey,deals){
       '<td style="white-space:nowrap;font-size:11px">'+(d['Opportunity Owner']||'')+'</td>'+
       '<td style="white-space:nowrap;color:#9090b0;font-size:11px">'+(d['Close Date']||'')+'</td>'+
       '<td class="td-sm">'+(d['Next Step']||'—')+'</td>'+
+      sfCell+
     '</tr>';
   }).join('');
 }
@@ -1043,8 +1060,88 @@ window.openDealDrawer=function(prodKey,idx){
       '<div class="field-row"><span class="field-key">Created</span><span class="field-val">'+(d['Created Date']||'—')+'</span></div>'+
       '<div class="field-row"><span class="field-key">Close date</span><span class="field-val">'+(d['Close Date']||'—')+'</span></div>'+
     '</div>'+
-    (d['Next Step']?'<div class="field-group"><div class="field-label">Next step</div><div style="font-size:12px;padding:10px 12px;background:#ede8ff;border-radius:6px;border:1px solid rgba(48,24,148,0.2);color:#301894;line-height:1.6">'+d['Next Step']+'</div></div>':'');
+    (d['Next Step']?'<div class="field-group"><div class="field-label">Next step</div><div style="font-size:12px;padding:10px 12px;background:#ede8ff;border-radius:6px;border:1px solid rgba(48,24,148,0.2);color:#301894;line-height:1.6">'+d['Next Step']+'</div></div>':'')+
+    (d['SF Link']?'<div class="field-group"><div class="field-label">Salesforce</div><div style="padding:4px 0"><a href="'+d['SF Link']+'" target="_blank" style="font-size:13px;font-weight:600;color:#301894;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:#ede8ff;border-radius:6px;border:1px solid rgba(48,24,148,0.15)">↗ Open in Salesforce</a></div></div>':'');
   document.getElementById('drawer-overlay').classList.add('open');
+};
+
+// ══════════════════════════════════════════
+// CSV EXPORT — respects all active filters
+// ══════════════════════════════════════════
+window.exportCSV=function(tabType,prodKey){
+  var prod=PRODS[prodKey];
+  var prodLabel=(prod.label).replace(/\s+/g,'-');
+
+  // Escape a CSV cell value
+  function esc(v){
+    var s=String(v===null||v===undefined?'':v);
+    if(s.indexOf(',')>-1||s.indexOf('"')>-1||s.indexOf('\n')>-1)return '"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }
+  function row(arr){return arr.map(esc).join(',');}
+
+  var headers,dataRows,filename,filterDesc=[];
+
+  if(tabType==='leads'){
+    var st=leadsState[prodKey]||{};
+    var leads=ALL_LEADS.filter(prod.leadFilter).filter(function(l){
+      if(st.status&&l['Lead Status']!==st.status)return false;
+      if(st.owner&&st.owner!=='all'&&l['Lead Owner']!==st.owner)return false;
+      if(st.source&&st.source!=='all'&&l['Source Type']!==st.source)return false;
+      if(st.search){var q=st.search.toLowerCase();if(!((l['First Name']||'')+' '+(l['Last Name']||'')+' '+(l['Company / Account']||'')).toLowerCase().includes(q))return false;}
+      return true;
+    });
+    if(st.status)filterDesc.push(st.status);
+    if(st.owner&&st.owner!=='all')filterDesc.push(st.owner);
+    if(st.source&&st.source!=='all')filterDesc.push(st.source);
+    headers=['First Name','Last Name','Company','Lead Owner','Lead Type','Lead Status','Source','Vertical','Discovery Done','Discovery Date','Sales Intro Done','Sales Intro Date','Create Date','SF Link'];
+    dataRows=leads.map(function(l){return row([l['First Name'],l['Last Name'],l['Company / Account'],l['Lead Owner'],l['Lead Type'],l['Lead Status'],l['Source Type'],l['Vertical'],l['Discovery Done']==='1'?'Yes':'No',l['discovery meeting date'],l['Sales Intro Done']==='1'?'Yes':'No',l['Sales Intro Date'],l['Create Date'],l['SF Link']||'']);});
+    filename=prodLabel+'-Leads'+(filterDesc.length?'-'+filterDesc.join('-'):'')+'.csv';
+  }
+  else if(tabType==='sal'){
+    var st=salState[prodKey]||{};
+    var sal=ALL_SAL.filter(prod.salFilter).filter(function(s){
+      if(st.terr&&s['Territory']!==st.terr)return false;
+      if(st.terrF&&st.terrF!=='all'&&s['Territory']!==st.terrF)return false;
+      if(st.stageF&&st.stageF!=='all'&&s['Stage']!==st.stageF)return false;
+      if(st.search){var q=st.search.toLowerCase();if(!((s['First Name']||'')+' '+(s['Last Name']||'')+' '+(s['Company / Account']||'')+' '+(s['Opportunity Name']||'')).toLowerCase().includes(q))return false;}
+      return true;
+    });
+    if(st.terr)filterDesc.push(st.terr);
+    else if(st.terrF&&st.terrF!=='all')filterDesc.push(st.terrF);
+    if(st.stageF&&st.stageF!=='all')filterDesc.push(st.stageF.replace(/\s+/g,'-'));
+    headers=['First Name','Last Name','Company','Opportunity Name','Opportunity Type','Territory','Stage','Opportunity Owner','Amount (USD)','Close Date','Converted Date','SF Link'];
+    dataRows=sal.map(function(s){return row([s['First Name'],s['Last Name'],s['Company / Account'],s['Opportunity Name'],s['Opportunity Type'],s['Territory'],s['Stage'],s['Opportunity Owner'],s['Amount (converted)'],s['Oppt Close Date'],s['Converted Date'],s['SF Link']||'']);});
+    filename=prodLabel+'-SAL'+(filterDesc.length?'-'+filterDesc.join('-'):'')+'.csv';
+  }
+  else if(tabType==='deals'){
+    var st=dealsState[prodKey]||{};
+    var deals=ALL_DEALS.filter(prod.dealFilter).filter(function(d){
+      if(st.stage&&d['Stage']!==st.stage)return false;
+      if(st.terrF&&st.terrF!=='all'&&d['Territory']!==st.terrF)return false;
+      if(st.typeF&&st.typeF!=='all'&&d['Type']!==st.typeF)return false;
+      if(st.fiscalF&&st.fiscalF!=='all'&&d['Fiscal Period']!==st.fiscalF)return false;
+      if(st.monthF&&st.monthF!=='all'){var _cd=d['Created Date']||'';if(_cd.length<7||!_cd.startsWith('2026-'+_MNUMS[st.monthF]))return false;}
+      if(st.search){var q=st.search.toLowerCase();if(!((d['Account Name']||'')+' '+(d['Opportunity Name']||'')).toLowerCase().includes(q))return false;}
+      return true;
+    });
+    if(st.monthF&&st.monthF!=='all')filterDesc.push(st.monthF+'-2026');
+    if(st.stage)filterDesc.push(st.stage.replace(/\s+/g,'-'));
+    if(st.terrF&&st.terrF!=='all')filterDesc.push(st.terrF.replace(/\s+/g,'-'));
+    if(st.typeF&&st.typeF!=='all')filterDesc.push(st.typeF.replace(/\s+/g,'-'));
+    if(st.fiscalF&&st.fiscalF!=='all')filterDesc.push(st.fiscalF);
+    headers=['Account Name','Opportunity Name','Opportunity Type','Vertical','Stage','Territory','Amount','Currency','Probability %','Type','Owner','Close Date','Created Date','Fiscal Period','Next Step','SF Link'];
+    dataRows=deals.map(function(d){return row([d['Account Name'],d['Opportunity Name'],d['Opportunity Type'],d['Vertical'],d['Stage'],d['Territory'],d['Amount'],d['Amount Currency'],d['Probability (%)'],d['Type'],d['Opportunity Owner'],d['Close Date'],d['Created Date'],d['Fiscal Period'],d['Next Step'],d['SF Link']||'']);});
+    filename=prodLabel+'-Deals'+(filterDesc.length?'-'+filterDesc.join('-'):'')+'.csv';
+  }
+
+  if(!dataRows||!dataRows.length){alert('No data to export for current filters.');return;}
+  var csv=[row(headers)].concat(dataRows).join('\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},200);
 };
 
 // ══════════════════════════════════════════
