@@ -208,6 +208,7 @@ tbody tr:hover td{background:#f8f7ff;}
   <div class="logo">
     <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zm0 11h7v7H3zm11-11h7v7h-7zm0 11h7v7h-7z"/></svg></div>
     <span class="logo-text">Facilio <span>Sales</span></span>
+    <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.12);color:#fde68a;border:1px solid rgba(253,230,138,0.35);letter-spacing:0.02em">2026 Data</span>
   </div>
   <span class="header-meta" id="header-meta">Loading…</span>
 </header>
@@ -331,7 +332,22 @@ var PRODS={
 };
 
 function safeFloat(v){try{return parseFloat(v||0)||0;}catch(e){return 0;}}
-function fmt(n){var x=Number(n)||0;if(x>=1e6)return '$'+(x/1e6).toFixed(3).replace(/\.?0+$/,'')+'M';return '$'+x.toLocaleString(undefined,{maximumFractionDigits:0});}
+function fmt(n){
+  var x=Number(n)||0;
+  if(x>=1e6){
+    // e.g. 1234567 → $1.23M
+    var m=x/1e6;
+    var s=m>=100?m.toFixed(0):m>=10?m.toFixed(1):m.toFixed(2);
+    return '$'+s.replace(/\.?0+$/,'')+'M';
+  }
+  if(x>=1000){
+    // e.g. 78634 → $78.6k, 7500 → $7.5k, 321482 → $321.5k
+    var k=x/1000;
+    var sk=k>=100?k.toFixed(1):k.toFixed(1);
+    return '$'+sk.replace(/\.?0+$/,'')+'k';
+  }
+  return '$'+x.toLocaleString(undefined,{maximumFractionDigits:0});
+}
 function fmtFull(n){return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});}
 
 function parseDate(s){
@@ -767,10 +783,13 @@ function renderDealsTab(prodKey,prod,deals){
   var weighted=active.reduce(function(a,d){return a+safeFloat(d['Amount'])*safeFloat(d['Probability (%)'])/100;},0);
   var withAmt=active.filter(function(d){return safeFloat(d['Amount'])>0;}).length;
 
-  // Build month pills — only show months that have at least one deal in 2026
+  // Build month pills — only show months that have deals with a valid Created Date in 2026
   var monthPillsHtml=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(function(m){
     var mm=_MNUMS[m];
-    var has=deals.some(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+    var has=deals.some(function(d){
+      var cd=d['Created Date']||'';
+      return cd.length>=7&&cd.startsWith('2026-'+mm);
+    });
     if(!has)return '';
     return '<button class="pill'+(st.monthF===m?' active':'')+'" data-mf="'+m+'" style="font-size:11px;padding:4px 11px">'+m+'</button>';
   }).join('');
@@ -793,7 +812,6 @@ function renderDealsTab(prodKey,prod,deals){
       '<div class="kpi c-blue"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+deals.length+'</div><div class="kpi-sub">'+active.length+' active (Opp+)</div></div>'+
       '<div class="kpi c-green"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+withAmt+' with amount</div></div>'+
       '<div class="kpi c-teal"><div class="kpi-label">Closed Won</div><div class="kpi-val">'+fmt(wonAmt)+'</div><div class="kpi-sub">'+won.length+' deals</div></div>'+
-      '<div class="kpi c-amber"><div class="kpi-label">Weighted Pipeline</div><div class="kpi-val">'+fmt(weighted)+'</div><div class="kpi-sub">by probability</div></div>'+
     '</div>'+
     '<div class="chart-card">'+
       '<div class="chart-header">'+
@@ -838,7 +856,7 @@ function renderDealsTab(prodKey,prod,deals){
         snapEl.style.display='none';snapEl.innerHTML='';
       } else {
         var mm=_MNUMS[st.monthF];
-        var mDeals=deals.filter(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+        var mDeals=deals.filter(function(d){var cd=d['Created Date']||'';return cd.length>=7&&cd.startsWith('2026-'+mm);});
         var stageBreak={};STAGE_ORDER.forEach(function(s){stageBreak[s]=0;});
         mDeals.forEach(function(d){stageBreak[d['Stage']]=(stageBreak[d['Stage']]||0)+1;});
         var mAmt=mDeals.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
@@ -869,7 +887,7 @@ function renderDealsTab(prodKey,prod,deals){
   if(st.monthF!=='all'){
     var snapEl=document.getElementById('month-snapshot-'+prodKey);
     var mm=_MNUMS[st.monthF];
-    var mDeals=deals.filter(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+    var mDeals=deals.filter(function(d){var cd=d['Created Date']||'';return cd.length>=7&&cd.startsWith('2026-'+mm);});
     var stageBreak={};STAGE_ORDER.forEach(function(s){stageBreak[s]=0;});
     mDeals.forEach(function(d){stageBreak[d['Stage']]=(stageBreak[d['Stage']]||0)+1;});
     var mAmt=mDeals.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
@@ -903,7 +921,10 @@ function drawDealsChart(prodKey,prod,deals,chartId){
   // CHANGE 4: apply month filter to chart data
   var data=deals.filter(function(d){
     if(terrFilter!=='all'&&d['Territory']!==terrFilter)return false;
-    if(st.monthF&&st.monthF!=='all'&&!(d['Created Date']||'').startsWith('2026-'+_MNUMS[st.monthF]))return false;
+    if(st.monthF&&st.monthF!=='all'){
+      var cd=d['Created Date']||'';
+      if(cd.length<7||!cd.startsWith('2026-'+_MNUMS[st.monthF]))return false;
+    }
     return true;
   });
   var stageAmts={},stageCounts={};
@@ -965,7 +986,7 @@ function drawDealsTable(prodKey,deals){
     if(st.typeF!=='all'&&d['Type']!==st.typeF)return false;
     if(st.fiscalF!=='all'&&d['Fiscal Period']!==st.fiscalF)return false;
     // CHANGE 5: month filter on table
-    if(st.monthF&&st.monthF!=='all'&&!(d['Created Date']||'').startsWith('2026-'+_MNUMS[st.monthF]))return false;
+    if(st.monthF&&st.monthF!=='all'){var _cd=d['Created Date']||'';if(_cd.length<7||!_cd.startsWith('2026-'+_MNUMS[st.monthF]))return false;}
     if(st.search){var q=st.search.toLowerCase();if(!((d['Account Name']||'')+' '+(d['Opportunity Name']||'')).toLowerCase().includes(q))return false;}
     return true;
   });
