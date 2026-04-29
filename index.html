@@ -306,11 +306,8 @@ var ALL_LEADS=[],ALL_SAL=[],ALL_DEALS=[];
 var currentProd='overall',currentSub='overview';
 var chartRegistry={};
 
-// ── CHANGE 2: Active stages = only Opportunity and beyond (not Interest/SAL/RFP)
 var ACTIVE_STAGES=['Opportunity','Procurement','Finance Approval','Commitment'];
-// All pipeline stages for charts/display
 var ALL_PIPE_STAGES=['Interest','Sales Accepted','Opportunity','RFP','Procurement','Finance Approval','Commitment'];
-
 var STAGE_ORDER=['Interest','Sales Accepted','Opportunity','RFP','Procurement','Finance Approval','Commitment','Closed Won','Closed Lost'];
 var STAGE_COLORS={'Interest':'#f59e0b','Sales Accepted':'#4f7bff','Opportunity':'#10b981','RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa','Commitment':'#22c55e','Closed Won':'#16a34a','Closed Lost':'#ef4444'};
 var TERR_COLORS={'Middle East':'#1a56db','North America':'#0e7b4c','Europe':'#d97706','UK':'#9333ea','India':'#0f766e','ANZ':'#be185d','USA':'#0369a1'};
@@ -334,19 +331,11 @@ var PRODS={
 };
 
 function safeFloat(v){try{return parseFloat(v||0)||0;}catch(e){return 0;}}
-
-// ── CHANGE 1: Exact amounts, no rounding to k
-function fmt(n){
-  var x=Number(n)||0;
-  if(x>=1e6) return '$'+(x/1e6).toFixed(3).replace(/\.?0+$/,'')+'M';
-  return '$'+x.toLocaleString(undefined,{maximumFractionDigits:0});
-}
-function fmtFull(n){
-  return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});
-}
+function fmt(n){var x=Number(n)||0;if(x>=1e6)return '$'+(x/1e6).toFixed(3).replace(/\.?0+$/,'')+'M';return '$'+x.toLocaleString(undefined,{maximumFractionDigits:0});}
+function fmtFull(n){return '$'+Number(n).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});}
 
 function parseDate(s){
-  if(!s||s==='-'||s==='') return null;
+  if(!s||s==='-'||s==='')return null;
   var str=s.toString().split(',')[0].trim();
   var iso=str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(iso){var d=new Date(+iso[1],+iso[2]-1,+iso[3]);return isNaN(d)?null:d;}
@@ -368,7 +357,6 @@ function srcBadge(s){return '<span class="badge '+(s==='Outbound'?'b-out':'b-in'
 function doneBadge(v){return v==='1'?'<span class="badge b-done">Done</span>':'<span class="badge b-notdone">Not done</span>';}
 function stageBadge(s){return '<span class="badge '+(STAGE_BADGE[s]||'b-prog')+'">'+s+'</span>';}
 function salTypeBadge(s){var map={'Connected CMMS':'background:#dbeafe;color:#1d4ed8','AI Suite':'background:#ccfbf1;color:#0f766e'};var style=map[s]||'background:#ede9fe;color:#7c3aed';return '<span class="badge" style="'+style+'">'+s+'</span>';}
-
 function destroyChart(id){if(chartRegistry[id]){try{chartRegistry[id].destroy();}catch(e){}delete chartRegistry[id];}}
 
 var countLabelPlugin={id:'countLabels',afterDatasetsDraw:function(chart){
@@ -441,24 +429,19 @@ function renderCurrentView(){
 // OVERALL
 // ══════════════════════════════════════════
 function renderOverall(){
-  // CHANGE 2: active = only Opportunity/Commitment/Procurement/Finance Approval
   var active=ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;});
   var won=ALL_DEALS.filter(function(d){return d['Stage']==='Closed Won';});
   var totalPipe=active.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var totalWon=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var totalLeads=ALL_LEADS.length;
   var totalSAL=ALL_SAL.length;
-
   document.getElementById('overall-sub').textContent='Total pipeline · all products · '+ALL_DEALS.length+' deals · '+totalLeads+' leads';
-
   document.getElementById('overall-kpis').innerHTML=
     '<div class="kpi c-blue"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+active.length+' deals (Opp+)</div></div>'+
     '<div class="kpi c-green"><div class="kpi-label">Closed Won</div><div class="kpi-val">'+fmt(totalWon)+'</div><div class="kpi-sub">'+won.length+' deals closed</div></div>'+
     '<div class="kpi c-teal"><div class="kpi-label">Total Leads</div><div class="kpi-val">'+totalLeads+'</div><div class="kpi-sub">→ '+totalSAL+' SAL converted</div></div>'+
     '<div class="kpi c-amber"><div class="kpi-label">SAL Count</div><div class="kpi-val">'+totalSAL+'</div><div class="kpi-sub">'+Math.round(totalSAL/Math.max(totalLeads,1)*100)+'% lead → SAL</div></div>'+
     '<div class="kpi c-purple"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+ALL_DEALS.length+'</div><div class="kpi-sub">'+ALL_DEALS.filter(function(d){return d['Stage']==='Closed Lost';}).length+' lost</div></div>';
-
-  // Funnel — CHANGE 4: Discovery Set includes LTO
   var discSet=ALL_LEADS.filter(function(l){return ['Discovery Set','DG Qualified','SAL','LTO'].indexOf(l['Lead Status'])>-1;}).length;
   var discDone=ALL_LEADS.filter(function(l){return l['Discovery Done']==='1';}).length;
   var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
@@ -475,106 +458,44 @@ function renderOverall(){
     var pct=totalLeads>0?Math.max(4,Math.round(step.count/totalLeads*100)):4;
     fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div>'+
       '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';
-    if(i<steps.length-1){
-      var rate=step.count>0?Math.round(steps[i+1].count/step.count*100):0;
-      fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'% conv</span><div class="funnel-line"></div></div>';
-    }
+    if(i<steps.length-1){var rate=step.count>0?Math.round(steps[i+1].count/step.count*100):0;fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'% conv</span><div class="funnel-line"></div></div>';}
   });
   document.getElementById('overall-funnel').innerHTML=fHTML;
-
-  // Pipeline by stage — show ALL stages, not just active
   var allStageDeals=ALL_DEALS.filter(function(d){return STAGE_ORDER.indexOf(d['Stage'])>-1;});
   var maxAmt=0;
-  STAGE_ORDER.forEach(function(s){
-    var a=allStageDeals.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);
-    if(a>maxAmt)maxAmt=a;
-  });
+  STAGE_ORDER.forEach(function(s){var a=allStageDeals.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);if(a>maxAmt)maxAmt=a;});
   var stageHTML='';
   STAGE_ORDER.forEach(function(s){
     var recs=allStageDeals.filter(function(d){return d['Stage']===s;});
     var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
     if(!recs.length)return;
-    var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;
-    var col=STAGE_COLORS[s]||'#888';
-    stageHTML+='<div class="pipe-row">'+
-      '<div class="pipe-dot" style="background:'+col+'"></div>'+
-      '<div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
-        '<span style="font-size:12px;color:var(--text-muted)">'+s+'</span>'+
-        '<span style="font-size:12px;font-weight:600">'+fmtFull(amt)+'</span></div>'+
-      '<div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div>'+
-      '<div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';
+    var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;var col=STAGE_COLORS[s]||'#888';
+    stageHTML+='<div class="pipe-row"><div class="pipe-dot" style="background:'+col+'"></div><div style="flex:1"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:12px;color:var(--text-muted)">'+s+'</span><span style="font-size:12px;font-weight:600">'+fmtFull(amt)+'</span></div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div><div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';
   });
   document.getElementById('overall-pipe-stage').innerHTML=stageHTML;
-
-  // Vertical
   var vertMap={};
-  ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).forEach(function(d){
-    var v=d['Vertical']||'Unknown';
-    if(!vertMap[v]){vertMap[v]={count:0,amt:0};}
-    vertMap[v].count++;vertMap[v].amt+=safeFloat(d['Amount']);
-  });
+  ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).forEach(function(d){var v=d['Vertical']||'Unknown';if(!vertMap[v]){vertMap[v]={count:0,amt:0};}vertMap[v].count++;vertMap[v].amt+=safeFloat(d['Amount']);});
   var vertEntries=Object.entries(vertMap).sort(function(a,b){return b[1].amt-a[1].amt;});
   var maxVAmt=vertEntries.length?vertEntries[0][1].amt:1;
   var vertColors=['#1d4ed8','#0f766e','#7c3aed','#d97706','#dc2626','#0891b2','#059669','#9333ea','#ea580c','#0284c7'];
   var vertHTML='';
-  vertEntries.forEach(function(e,i){
-    var v=e[0],info=e[1];
-    var pct=Math.max(8,Math.round(info.amt/maxVAmt*100));
-    var col=vertColors[i%vertColors.length];
-    vertHTML+='<div class="hbar-row">'+
-      '<div class="hbar-label" title="'+v+'">'+v+'</div>'+
-      '<div class="hbar-track"><div class="hbar-fill" style="width:'+pct+'%;background:'+col+'">'+(pct>=20?info.count+' deals':'')+'</div></div>'+
-      '<div class="hbar-val">'+fmtFull(info.amt)+'</div></div>';
-  });
+  vertEntries.forEach(function(e,i){var v=e[0],info=e[1];var pct=Math.max(8,Math.round(info.amt/maxVAmt*100));var col=vertColors[i%vertColors.length];vertHTML+='<div class="hbar-row"><div class="hbar-label" title="'+v+'">'+v+'</div><div class="hbar-track"><div class="hbar-fill" style="width:'+pct+'%;background:'+col+'">'+(pct>=20?info.count+' deals':'')+'</div></div><div class="hbar-val">'+fmtFull(info.amt)+'</div></div>';});
   document.getElementById('overall-vertical').innerHTML=vertHTML;
-
-  // Product chart
   destroyChart('overall-product-chart');
   var prodLabels=['CMMS','AI Suite','Other Products'];
   var prodLeads=[ALL_LEADS.filter(PRODS.cmms.leadFilter).length,ALL_LEADS.filter(PRODS.aisuit.leadFilter).length,ALL_LEADS.filter(PRODS.others.leadFilter).length];
-  var prodDeals=[
-    ALL_DEALS.filter(function(d){return PRODS.cmms.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,
-    ALL_DEALS.filter(function(d){return PRODS.aisuit.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,
-    ALL_DEALS.filter(function(d){return PRODS.others.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length
-  ];
-  chartRegistry['overall-product-chart']=new Chart(document.getElementById('overall-product-chart'),{
-    type:'bar',
-    data:{labels:prodLabels,datasets:[
-      {label:'Leads',data:prodLeads,backgroundColor:['#dbeafe','#ccfbf1','#ede9fe'],borderColor:['#1d4ed8','#0f766e','#7c3aed'],borderWidth:1.5,borderRadius:4},
-      {label:'Active Deals',data:prodDeals,backgroundColor:['#1d4ed8cc','#0f766ecc','#7c3aedcc'],borderRadius:4}
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{font:{size:11},color:'#5a5a7a',boxWidth:10}}},
-      scales:{x:{grid:{display:false},ticks:{color:'#9090b0',font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#9090b0',font:{size:11},stepSize:10}}}}
-  });
-
-  // Top 5
-  var top5=ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1&&safeFloat(d['Amount'])>0;})
-    .sort(function(a,b){return safeFloat(b['Amount'])-safeFloat(a['Amount']);}).slice(0,5);
+  var prodDeals=[ALL_DEALS.filter(function(d){return PRODS.cmms.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,ALL_DEALS.filter(function(d){return PRODS.aisuit.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length,ALL_DEALS.filter(function(d){return PRODS.others.dealFilter(d)&&ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).length];
+  chartRegistry['overall-product-chart']=new Chart(document.getElementById('overall-product-chart'),{type:'bar',data:{labels:prodLabels,datasets:[{label:'Leads',data:prodLeads,backgroundColor:['#dbeafe','#ccfbf1','#ede9fe'],borderColor:['#1d4ed8','#0f766e','#7c3aed'],borderWidth:1.5,borderRadius:4},{label:'Active Deals',data:prodDeals,backgroundColor:['#1d4ed8cc','#0f766ecc','#7c3aedcc'],borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11},color:'#5a5a7a',boxWidth:10}}},scales:{x:{grid:{display:false},ticks:{color:'#9090b0',font:{size:11}}},y:{grid:{color:'rgba(0,0,0,0.06)'},ticks:{color:'#9090b0',font:{size:11},stepSize:10}}}}});
+  var top5=ALL_DEALS.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1&&safeFloat(d['Amount'])>0;}).sort(function(a,b){return safeFloat(b['Amount'])-safeFloat(a['Amount']);}).slice(0,5);
   var top5HTML='';
-  top5.forEach(function(d,i){
-    var tc={'Connected CMMS':'#1d4ed8','AI Suite':'#0f766e'}[d['Opportunity Type']]||'#7c3aed';
-    top5HTML+='<div class="top-deal-row">'+
-      '<div class="top-deal-rank">'+(i+1)+'</div>'+
-      '<div class="top-deal-info"><div class="top-deal-name">'+d['Account Name']+'</div>'+
-      '<div class="top-deal-meta"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+d['Opportunity Type']+'</span> · '+d['Stage']+' · '+(d['Vertical']||'—')+'</div></div>'+
-      '<div class="top-deal-amt">'+fmtFull(safeFloat(d['Amount']))+'</div></div>';
-  });
+  top5.forEach(function(d,i){var tc={'Connected CMMS':'#1d4ed8','AI Suite':'#0f766e'}[d['Opportunity Type']]||'#7c3aed';top5HTML+='<div class="top-deal-row"><div class="top-deal-rank">'+(i+1)+'</div><div class="top-deal-info"><div class="top-deal-name">'+d['Account Name']+'</div><div class="top-deal-meta"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+d['Opportunity Type']+'</span> · '+d['Stage']+' · '+(d['Vertical']||'—')+'</div></div><div class="top-deal-amt">'+fmtFull(safeFloat(d['Amount']))+'</div></div>';});
   document.getElementById('overall-top5').innerHTML=top5HTML||'<div class="empty">No active deals with amount</div>';
-
-  // Territory
   var terrMap={};
   ALL_SAL.forEach(function(s){var t=s['Territory']||'Unknown';terrMap[t]=(terrMap[t]||0)+1;});
   var terrEntries=Object.entries(terrMap).sort(function(a,b){return b[1]-a[1];});
   var maxT=terrEntries.length?terrEntries[0][1]:1;
   var terrHTML='';
-  terrEntries.forEach(function(e){
-    var t=e[0],cnt=e[1];var col=TERR_COLORS[t]||'#888';var pct=Math.round(cnt/maxT*100);
-    terrHTML+='<div class="hbar-row">'+
-      '<div class="hbar-label">'+t+'</div>'+
-      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
-      '<div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';
-  });
+  terrEntries.forEach(function(e){var t=e[0],cnt=e[1];var col=TERR_COLORS[t]||'#888';var pct=Math.round(cnt/maxT*100);terrHTML+='<div class="hbar-row"><div class="hbar-label">'+t+'</div><div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div><div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';});
   document.getElementById('overall-territory').innerHTML=terrHTML||'<div class="empty">No territory data</div>';
 }
 
@@ -589,11 +510,9 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
   var totalPipe=active.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var totalWon=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var salLeads=leads.filter(function(l){return l['Lead Status']==='SAL';});
-  // CHANGE 4: Discovery Set includes LTO
   var discSet=leads.filter(function(l){return ['Discovery Set','DG Qualified','SAL','LTO'].indexOf(l['Lead Status'])>-1;}).length;
   var discDone=leads.filter(function(l){return l['Discovery Done']==='1';}).length;
   var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
-
   var html='<div class="panel-title">'+prod.label+' — Overview</div>'+
     '<div class="panel-sub">Active pipeline · leads · conversion</div>'+
     '<div class="kpis">'+
@@ -603,103 +522,30 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
       '<div class="kpi c-amber"><div class="kpi-label">Deals Lost</div><div class="kpi-val">'+lost.length+'</div><div class="kpi-sub">'+fmtFull(lost.reduce(function(a,d){return a+safeFloat(d['Amount']);},0))+' lost value</div></div>'+
     '</div>'+
     '<div class="two-col">'+
-      '<div class="chart-card">'+
-        '<div class="chart-title" style="margin-bottom:4px">Sales funnel</div>'+
-        '<div class="chart-hint" style="margin-bottom:20px">Lead → deal conversion</div>'+
-        '<div id="pov-funnel-'+prodKey+'"></div>'+
-      '</div>'+
-      '<div class="chart-card">'+
-        '<div class="chart-title" style="margin-bottom:4px">Pipeline by stage</div>'+
-        '<div class="chart-hint" style="margin-bottom:16px">All deals · USD</div>'+
-        '<div id="pov-stage-'+prodKey+'"></div>'+
-      '</div>'+
+      '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">Sales funnel</div><div class="chart-hint" style="margin-bottom:20px">Lead → deal conversion</div><div id="pov-funnel-'+prodKey+'"></div></div>'+
+      '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">Pipeline by stage</div><div class="chart-hint" style="margin-bottom:16px">All deals · USD</div><div id="pov-stage-'+prodKey+'"></div></div>'+
     '</div>'+
     '<div class="two-col">'+
-      '<div class="chart-card">'+
-        '<div class="chart-title" style="margin-bottom:4px">Lead status breakdown</div>'+
-        '<div class="chart-hint" style="margin-bottom:16px">All leads at latest status</div>'+
-        '<div id="pov-leadstatus-'+prodKey+'"></div>'+
-      '</div>'+
-      '<div class="chart-card">'+
-        '<div class="chart-title" style="margin-bottom:4px">By territory (SAL)</div>'+
-        '<div class="chart-hint" style="margin-bottom:16px">SAL count per territory</div>'+
-        '<div id="pov-terr-'+prodKey+'"></div>'+
-      '</div>'+
+      '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">Lead status breakdown</div><div class="chart-hint" style="margin-bottom:16px">All leads at latest status</div><div id="pov-leadstatus-'+prodKey+'"></div></div>'+
+      '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">By territory (SAL)</div><div class="chart-hint" style="margin-bottom:16px">SAL count per territory</div><div id="pov-terr-'+prodKey+'"></div></div>'+
     '</div>';
-
   el.innerHTML=html;
-
-  // Funnel
-  var fSteps=[
-    {label:'Total Leads',count:leads.length,color:prod.color},
-    {label:'Discovery Set',count:discSet,color:prod.color+'dd'},
-    {label:'Discovery Done',count:discDone,color:prod.color+'bb'},
-    {label:'SAL',count:sal.length,color:'#0e7b4c'},
-    {label:'Opportunity+',count:opps,color:'#0f766e'},
-    {label:'Closed Won',count:won.length,color:'#22c55e'}
-  ];
+  var fSteps=[{label:'Total Leads',count:leads.length,color:prod.color},{label:'Discovery Set',count:discSet,color:prod.color+'dd'},{label:'Discovery Done',count:discDone,color:prod.color+'bb'},{label:'SAL',count:sal.length,color:'#0e7b4c'},{label:'Opportunity+',count:opps,color:'#0f766e'},{label:'Closed Won',count:won.length,color:'#22c55e'}];
   var fHTML='';
-  fSteps.forEach(function(step,i){
-    var base=leads.length||1;
-    var pct=Math.max(4,Math.round(step.count/base*100));
-    fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div>'+
-      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';
-    if(i<fSteps.length-1){
-      var rate=step.count>0?Math.round(fSteps[i+1].count/step.count*100):0;
-      fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'%</span><div class="funnel-line"></div></div>';
-    }
-  });
+  fSteps.forEach(function(step,i){var base=leads.length||1;var pct=Math.max(4,Math.round(step.count/base*100));fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div><div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';if(i<fSteps.length-1){var rate=step.count>0?Math.round(fSteps[i+1].count/step.count*100):0;fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'%</span><div class="funnel-line"></div></div>';}});
   document.getElementById('pov-funnel-'+prodKey).innerHTML=fHTML;
-
-  // Stage pipeline — show all stages
   var allDeals=deals.filter(function(d){return STAGE_ORDER.indexOf(d['Stage'])>-1;});
-  var maxAmt=0;
-  STAGE_ORDER.forEach(function(s){var a=allDeals.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);if(a>maxAmt)maxAmt=a;});
+  var maxAmt=0;STAGE_ORDER.forEach(function(s){var a=allDeals.filter(function(d){return d['Stage']===s;}).reduce(function(x,d){return x+safeFloat(d['Amount']);},0);if(a>maxAmt)maxAmt=a;});
   var stHTML='';
-  STAGE_ORDER.forEach(function(s){
-    var recs=allDeals.filter(function(d){return d['Stage']===s;});
-    var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
-    if(!recs.length)return;
-    var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;
-    var col=STAGE_COLORS[s]||'#888';
-    stHTML+='<div class="pipe-row">'+
-      '<div class="pipe-dot" style="background:'+col+'"></div>'+
-      '<div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:4px">'+
-        '<span style="font-size:12px;color:var(--text-muted)">'+s+'</span>'+
-        '<span style="font-size:12px;font-weight:600">'+fmtFull(amt)+'</span></div>'+
-      '<div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div>'+
-      '<div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';
-  });
+  STAGE_ORDER.forEach(function(s){var recs=allDeals.filter(function(d){return d['Stage']===s;});var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);if(!recs.length)return;var pct=maxAmt>0?Math.round(amt/maxAmt*100):0;var col=STAGE_COLORS[s]||'#888';stHTML+='<div class="pipe-row"><div class="pipe-dot" style="background:'+col+'"></div><div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:12px;color:var(--text-muted)">'+s+'</span><span style="font-size:12px;font-weight:600">'+fmtFull(amt)+'</span></div><div class="pipe-bar-wrap"><div class="pipe-bar" style="width:'+pct+'%;background:'+col+'"></div></div><div style="font-size:11px;color:#9090b0;margin-top:3px">'+recs.length+' deal'+(recs.length!==1?'s':'')+'</div></div></div>';});
   document.getElementById('pov-stage-'+prodKey).innerHTML=stHTML||'<div class="empty">No deals</div>';
-
-  // Lead status
-  var statusMap={};
-  leads.forEach(function(l){var s=l['Lead Status']||'Unknown';statusMap[s]=(statusMap[s]||0)+1;});
-  var statusEntries=Object.entries(statusMap).sort(function(a,b){return b[1]-a[1];});
-  var maxS=statusEntries.length?statusEntries[0][1]:1;
-  var lsHTML='';
-  statusEntries.forEach(function(e){
-    var s=e[0],cnt=e[1];var col=LEAD_COLORS[s]||'#888';var pct=Math.round(cnt/maxS*100);
-    lsHTML+='<div class="hbar-row">'+
-      '<div style="width:100px;flex-shrink:0"><span class="badge '+(LEAD_BADGES[s]||'b-prog')+'" style="font-size:10px">'+s+'</span></div>'+
-      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
-      '<div class="hbar-val">'+cnt+'</div></div>';
-  });
+  var statusMap={};leads.forEach(function(l){var s=l['Lead Status']||'Unknown';statusMap[s]=(statusMap[s]||0)+1;});
+  var statusEntries=Object.entries(statusMap).sort(function(a,b){return b[1]-a[1];});var maxS=statusEntries.length?statusEntries[0][1]:1;var lsHTML='';
+  statusEntries.forEach(function(e){var s=e[0],cnt=e[1];var col=LEAD_COLORS[s]||'#888';var pct=Math.round(cnt/maxS*100);lsHTML+='<div class="hbar-row"><div style="width:100px;flex-shrink:0"><span class="badge '+(LEAD_BADGES[s]||'b-prog')+'" style="font-size:10px">'+s+'</span></div><div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div><div class="hbar-val">'+cnt+'</div></div>';});
   document.getElementById('pov-leadstatus-'+prodKey).innerHTML=lsHTML||'<div class="empty">No leads</div>';
-
-  // Territory
-  var tMap={};
-  sal.forEach(function(s){var t=s['Territory']||'Unknown';tMap[t]=(tMap[t]||0)+1;});
-  var tEntries=Object.entries(tMap).sort(function(a,b){return b[1]-a[1];});
-  var maxT2=tEntries.length?tEntries[0][1]:1;
-  var tHTML='';
-  tEntries.forEach(function(e){
-    var t=e[0],cnt=e[1];var col=TERR_COLORS[t]||'#888';var pct=Math.round(cnt/maxT2*100);
-    tHTML+='<div class="hbar-row">'+
-      '<div class="hbar-label">'+t+'</div>'+
-      '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div>'+
-      '<div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';
-  });
+  var tMap={};sal.forEach(function(s){var t=s['Territory']||'Unknown';tMap[t]=(tMap[t]||0)+1;});
+  var tEntries=Object.entries(tMap).sort(function(a,b){return b[1]-a[1];});var maxT2=tEntries.length?tEntries[0][1]:1;var tHTML='';
+  tEntries.forEach(function(e){var t=e[0],cnt=e[1];var col=TERR_COLORS[t]||'#888';var pct=Math.round(cnt/maxT2*100);tHTML+='<div class="hbar-row"><div class="hbar-label">'+t+'</div><div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div><div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';});
   document.getElementById('pov-terr-'+prodKey).innerHTML=tHTML||'<div class="empty">No territory data</div>';
 }
 
@@ -707,15 +553,12 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
 // LEADS TAB
 // ══════════════════════════════════════════
 var leadsState={};
-
 function renderLeadsTab(prodKey,prod,leads){
   var el=document.getElementById('panel-'+prodKey+'-leads');
-  var chartId='leads-chart-'+prodKey;
-  var statsId='leads-stats-'+prodKey;
+  var chartId='leads-chart-'+prodKey;var statsId='leads-stats-'+prodKey;
   if(!leadsState[prodKey]){leadsState[prodKey]={mode:'monthly',barKey:null,status:null,owner:'all',source:'all',search:''};}
   var st=leadsState[prodKey];
   var owners=[...new Set(leads.map(function(l){return l['Lead Owner']||'';}))].filter(Boolean).sort();
-
   el.innerHTML=
     '<div class="panel-title">'+prod.label+' — Leads</div>'+
     '<div class="panel-sub">All leads at their latest status · click bars to filter</div>'+
@@ -723,11 +566,7 @@ function renderLeadsTab(prodKey,prod,leads){
     '<div class="chart-card">'+
       '<div class="chart-header">'+
         '<div><div class="chart-title">Leads created over time</div><div class="chart-hint">Click a bar segment to filter · click again to clear</div></div>'+
-        '<div class="pill-group" id="lmode-'+prodKey+'">'+
-          '<button class="pill" data-v="weekly">Weekly</button>'+
-          '<button class="pill" data-v="biweekly">Bi-weekly</button>'+
-          '<button class="pill active" data-v="monthly">Monthly</button>'+
-        '</div>'+
+        '<div class="pill-group" id="lmode-'+prodKey+'"><button class="pill" data-v="weekly">Weekly</button><button class="pill" data-v="biweekly">Bi-weekly</button><button class="pill active" data-v="monthly">Monthly</button></div>'+
       '</div>'+
       '<div style="position:relative;height:260px;"><canvas id="'+chartId+'"></canvas></div>'+
       '<div class="stats-strip" id="'+statsId+'"></div>'+
@@ -735,10 +574,7 @@ function renderLeadsTab(prodKey,prod,leads){
     '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-          '<span class="table-title" id="ltitle-'+prodKey+'">All Leads</span>'+
-          '<span class="table-count" id="lcount-'+prodKey+'">0</span>'+
-        '</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="table-title" id="ltitle-'+prodKey+'">All Leads</span><span class="table-count" id="lcount-'+prodKey+'">0</span></div>'+
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
           '<select class="sel" id="lowner-'+prodKey+'"><option value="all">All owners</option>'+owners.map(function(o){return '<option value="'+o+'">'+o+'</option>';}).join('')+'</select>'+
           '<select class="sel" id="lsource-'+prodKey+'"><option value="all">All sources</option><option value="Outbound">Outbound</option><option value="Inbound">Inbound</option></select>'+
@@ -746,12 +582,8 @@ function renderLeadsTab(prodKey,prod,leads){
         '</div>'+
       '</div>'+
       '<div id="lchip-'+prodKey+'" style="padding:0 20px"></div>'+
-      '<div class="tbl-wrap"><table>'+
-        '<thead><tr><th>Name</th><th>Company</th><th>Owner</th><th>Status</th><th>Discovery</th><th>Disc Date</th><th>Sales Intro</th><th>SI Date</th><th>Source</th></tr></thead>'+
-        '<tbody id="leads-tbody-'+prodKey+'"></tbody>'+
-      '</table><div id="lempty-'+prodKey+'" class="empty" style="display:none">No leads match</div></div>'+
+      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Owner</th><th>Status</th><th>Discovery</th><th>Disc Date</th><th>Sales Intro</th><th>SI Date</th><th>Source</th></tr></thead><tbody id="leads-tbody-'+prodKey+'"></tbody></table><div id="lempty-'+prodKey+'" class="empty" style="display:none">No leads match</div></div>'+
     '</div>';
-
   var sal=leads.filter(function(l){return l['Lead Status']==='SAL';}).length;
   var dg=leads.filter(function(l){return l['Lead Status']==='DG Qualified';}).length;
   var ds=leads.filter(function(l){return l['Lead Status']==='Discovery Set';}).length;
@@ -763,103 +595,31 @@ function renderLeadsTab(prodKey,prod,leads){
     '<div class="kpi c-amber"><div class="kpi-label">Discovery Set</div><div class="kpi-val">'+ds+'</div><div class="kpi-sub">Meeting scheduled</div></div>'+
     '<div class="kpi c-teal"><div class="kpi-label">DG Qualified</div><div class="kpi-val">'+dg+'</div><div class="kpi-sub">Discovery done</div></div>'+
     '<div class="kpi c-green"><div class="kpi-label">SAL</div><div class="kpi-val">'+sal+'</div><div class="kpi-sub">'+Math.round(sal/Math.max(leads.length,1)*100)+'% of total</div></div>';
-
-  document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(btn){
-    btn.onclick=function(){
-      st.mode=this.dataset.v;st.barKey=null;st.status=null;
-      document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});this.classList.add('active');
-      drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);
-    };
-  });
+  document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(btn){btn.onclick=function(){st.mode=this.dataset.v;st.barKey=null;st.status=null;document.querySelectorAll('#lmode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});this.classList.add('active');drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);};});
   document.getElementById('lowner-'+prodKey).onchange=function(){st.owner=this.value;drawLeadsTable(prodKey,leads);};
   document.getElementById('lsource-'+prodKey).onchange=function(){st.source=this.value;drawLeadsTable(prodKey,leads);};
   document.getElementById('lsearch-'+prodKey).oninput=function(){st.search=this.value.trim();drawLeadsTable(prodKey,leads);};
-  drawLeadsChart(prodKey,prod,leads,chartId,statsId);
-  drawLeadsTable(prodKey,leads);
+  drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);
 }
-
 function drawLeadsChart(prodKey,prod,leads,chartId,statsId){
-  var st=leadsState[prodKey];
-  var STATUSES=['SAL','DG Qualified','Discovery Set','In-Progress','LTO'];
-  var buckets={};
-  leads.forEach(function(l){
-    var k=getKey(l['Create Date']||l['discovery meeting date']||'',st.mode);
-    if(!k)return;
-    if(!buckets[k]){buckets[k]={};STATUSES.forEach(function(s){buckets[k][s]=0;});}
-    var ls=l['Lead Status']||'In-Progress';
-    buckets[k][ls]=(buckets[k][ls]||0)+1;
-  });
-  var keys=Object.keys(buckets).sort();
-  var totals=keys.map(function(k){return STATUSES.reduce(function(a,s){return a+(buckets[k][s]||0);},0);});
-
-  destroyChart(chartId);
-  var canvas=document.getElementById(chartId);if(!canvas)return;
-  chartRegistry[chartId]=new Chart(canvas,{
-    type:'bar',plugins:[countLabelPlugin],
-    data:{labels:keys.map(function(k){return fmtKey(k,st.mode);}),
-      datasets:STATUSES.map(function(s){return{
-        label:s,data:keys.map(function(k){return buckets[k][s]||0;}),
-        backgroundColor:keys.map(function(k){
-          var base=LEAD_COLORS[s]||'#888';
-          if(st.barKey&&st.status)return(k===st.barKey&&s===st.status)?base:base+'40';
-          if(st.barKey)return k===st.barKey?base:base+'40';
-          if(st.status)return s===st.status?base:base+'40';
-          return base;
-        }),borderRadius:3,borderSkipped:false};})}
-    ,
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{
-        title:function(ctx){return fmtKey(keys[ctx[0].dataIndex],st.mode);},
-        label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},
-        afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}
-      }}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},
-      onClick:function(e,els){
-        if(!els.length){st.barKey=null;st.status=null;drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);return;}
-        var ck=keys[els[0].index],cs=STATUSES[els[0].datasetIndex];
-        if(st.barKey===ck&&st.status===cs){st.barKey=null;st.status=null;}else{st.barKey=ck;st.status=cs;}
-        drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);
-      },
-      onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}
-    }
-  });
+  var st=leadsState[prodKey];var STATUSES=['SAL','DG Qualified','Discovery Set','In-Progress','LTO'];var buckets={};
+  leads.forEach(function(l){var k=getKey(l['Create Date']||l['discovery meeting date']||'',st.mode);if(!k)return;if(!buckets[k]){buckets[k]={};STATUSES.forEach(function(s){buckets[k][s]=0;});}var ls=l['Lead Status']||'In-Progress';buckets[k][ls]=(buckets[k][ls]||0)+1;});
+  var keys=Object.keys(buckets).sort();var totals=keys.map(function(k){return STATUSES.reduce(function(a,s){return a+(buckets[k][s]||0);},0);});
+  destroyChart(chartId);var canvas=document.getElementById(chartId);if(!canvas)return;
+  chartRegistry[chartId]=new Chart(canvas,{type:'bar',plugins:[countLabelPlugin],data:{labels:keys.map(function(k){return fmtKey(k,st.mode);}),datasets:STATUSES.map(function(s){return{label:s,data:keys.map(function(k){return buckets[k][s]||0;}),backgroundColor:keys.map(function(k){var base=LEAD_COLORS[s]||'#888';if(st.barKey&&st.status)return(k===st.barKey&&s===st.status)?base:base+'40';if(st.barKey)return k===st.barKey?base:base+'40';if(st.status)return s===st.status?base:base+'40';return base;}),borderRadius:3,borderSkipped:false};})},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},plugins:{legend:{display:false},tooltip:{callbacks:{title:function(ctx){return fmtKey(keys[ctx[0].dataIndex],st.mode);},label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},onClick:function(e,els){if(!els.length){st.barKey=null;st.status=null;drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);return;}var ck=keys[els[0].index],cs=STATUSES[els[0].datasetIndex];if(st.barKey===ck&&st.status===cs){st.barKey=null;st.status=null;}else{st.barKey=ck;st.status=cs;}drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);},onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}}});
   buildStatsStrip(keys,totals,st.mode,statsId);
-  var legEl=document.getElementById('lleads-legend-'+prodKey);
-  if(legEl)legEl.innerHTML=STATUSES.map(function(s){return '<div class="legend-item"><div class="legend-dot" style="background:'+(LEAD_COLORS[s]||'#888')+'"></div>'+s+'</div>';}).join('');
+  var legEl=document.getElementById('lleads-legend-'+prodKey);if(legEl)legEl.innerHTML=STATUSES.map(function(s){return '<div class="legend-item"><div class="legend-dot" style="background:'+(LEAD_COLORS[s]||'#888')+'"></div>'+s+'</div>';}).join('');
 }
-
 function drawLeadsTable(prodKey,leads){
   var st=leadsState[prodKey];
-  var rows=leads.filter(function(l){
-    if(st.status&&l['Lead Status']!==st.status)return false;
-    if(st.owner!=='all'&&l['Lead Owner']!==st.owner)return false;
-    if(st.source!=='all'&&l['Source Type']!==st.source)return false;
-    if(st.search){var q=st.search.toLowerCase();if(!((l['First Name']||'')+' '+(l['Last Name']||'')+' '+(l['Company / Account']||'')).toLowerCase().includes(q))return false;}
-    return true;
-  });
-  var countEl=document.getElementById('lcount-'+prodKey);
-  var titleEl=document.getElementById('ltitle-'+prodKey);
-  if(countEl)countEl.textContent=rows.length;
-  if(titleEl)titleEl.textContent=st.status?st.status+' leads':'All Leads';
-  var chipEl=document.getElementById('lchip-'+prodKey);
-  if(chipEl)chipEl.innerHTML=st.status?'<div style="padding-bottom:10px"><span class="filter-chip">'+st.status+'<button onclick="clearLeadFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
-  var tbody=document.getElementById('leads-tbody-'+prodKey);
-  var emptyEl=document.getElementById('lempty-'+prodKey);
+  var rows=leads.filter(function(l){if(st.status&&l['Lead Status']!==st.status)return false;if(st.owner!=='all'&&l['Lead Owner']!==st.owner)return false;if(st.source!=='all'&&l['Source Type']!==st.source)return false;if(st.search){var q=st.search.toLowerCase();if(!((l['First Name']||'')+' '+(l['Last Name']||'')+' '+(l['Company / Account']||'')).toLowerCase().includes(q))return false;}return true;});
+  var countEl=document.getElementById('lcount-'+prodKey);var titleEl=document.getElementById('ltitle-'+prodKey);
+  if(countEl)countEl.textContent=rows.length;if(titleEl)titleEl.textContent=st.status?st.status+' leads':'All Leads';
+  var chipEl=document.getElementById('lchip-'+prodKey);if(chipEl)chipEl.innerHTML=st.status?'<div style="padding-bottom:10px"><span class="filter-chip">'+st.status+'<button onclick="clearLeadFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
+  var tbody=document.getElementById('leads-tbody-'+prodKey);var emptyEl=document.getElementById('lempty-'+prodKey);
   if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
   if(emptyEl)emptyEl.style.display='none';
-  if(tbody)tbody.innerHTML=rows.map(function(l){
-    return '<tr onclick="openLeadDrawer(\''+prodKey+'\','+leads.indexOf(l)+')">'+
-      '<td class="td-name">'+(l['First Name']||'')+' '+(l['Last Name']||'')+'</td>'+
-      '<td class="td-muted">'+(l['Company / Account']||'')+'</td>'+
-      '<td style="white-space:nowrap;font-size:12px">'+(l['Lead Owner']||'').split(' ')[0]+'</td>'+
-      '<td><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></td>'+
-      '<td>'+doneBadge(l['Discovery Done'])+'</td>'+
-      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['discovery meeting date']||'—')+'</td>'+
-      '<td>'+doneBadge(l['Sales Intro Done'])+'</td>'+
-      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['Sales Intro Date']||'—')+'</td>'+
-      '<td>'+srcBadge(l['Source Type']||'Inbound')+'</td>'+
-    '</tr>';
-  }).join('');
+  if(tbody)tbody.innerHTML=rows.map(function(l){return '<tr onclick="openLeadDrawer(\''+prodKey+'\','+leads.indexOf(l)+')"><td class="td-name">'+(l['First Name']||'')+' '+(l['Last Name']||'')+'</td><td class="td-muted">'+(l['Company / Account']||'')+'</td><td style="white-space:nowrap;font-size:12px">'+(l['Lead Owner']||'').split(' ')[0]+'</td><td><span class="badge '+(LEAD_BADGES[l['Lead Status']]||'b-prog')+'">'+(l['Lead Status']||'')+'</span></td><td>'+doneBadge(l['Discovery Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['discovery meeting date']||'—')+'</td><td>'+doneBadge(l['Sales Intro Done'])+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(l['Sales Intro Date']||'—')+'</td><td>'+srcBadge(l['Source Type']||'Inbound')+'</td></tr>';}).join('');
 }
 window.clearLeadFilter=function(prodKey){if(leadsState[prodKey]){leadsState[prodKey].status=null;leadsState[prodKey].barKey=null;}renderCurrentView();};
 window.openLeadDrawer=function(prodKey,idx){
@@ -905,7 +665,6 @@ function renderSALTab(prodKey,prod,sal){
   var stages=[...new Set(sal.map(function(s){return s['Stage']||'';}))].filter(Boolean).sort();
   var totalAmt=sal.reduce(function(a,s){return a+safeFloat(s['Amount (converted)']);},0);
   var meCount=sal.filter(function(s){return s['Territory']==='Middle East';}).length;
-
   el.innerHTML=
     '<div class="panel-title">'+prod.label+' — SAL</div>'+
     '<div class="panel-sub">Sales accepted leads converted to opportunities</div>'+
@@ -918,11 +677,7 @@ function renderSALTab(prodKey,prod,sal){
     '<div class="chart-card">'+
       '<div class="chart-header">'+
         '<div><div class="chart-title">SALs converted over time</div><div class="chart-hint">Click bar to filter by territory</div></div>'+
-        '<div class="pill-group" id="smode-'+prodKey+'">'+
-          '<button class="pill" data-v="weekly">Weekly</button>'+
-          '<button class="pill" data-v="biweekly">Bi-weekly</button>'+
-          '<button class="pill active" data-v="monthly">Monthly</button>'+
-        '</div>'+
+        '<div class="pill-group" id="smode-'+prodKey+'"><button class="pill" data-v="weekly">Weekly</button><button class="pill" data-v="biweekly">Bi-weekly</button><button class="pill active" data-v="monthly">Monthly</button></div>'+
       '</div>'+
       '<div style="position:relative;height:260px;"><canvas id="'+chartId+'"></canvas></div>'+
       '<div class="stats-strip" id="'+statsId+'"></div>'+
@@ -930,10 +685,7 @@ function renderSALTab(prodKey,prod,sal){
     '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-          '<span class="table-title" id="stitle-'+prodKey+'">All SALs</span>'+
-          '<span class="table-count" id="scount-'+prodKey+'">0</span>'+
-        '</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="table-title" id="stitle-'+prodKey+'">All SALs</span><span class="table-count" id="scount-'+prodKey+'">0</span></div>'+
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
           '<select class="sel" id="sterrF-'+prodKey+'"><option value="all">All territories</option>'+territories.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('')+'</select>'+
           '<select class="sel" id="sstageF-'+prodKey+'"><option value="all">All stages</option>'+stages.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('')+'</select>'+
@@ -941,86 +693,33 @@ function renderSALTab(prodKey,prod,sal){
         '</div>'+
       '</div>'+
       '<div id="schip-'+prodKey+'" style="padding:0 20px"></div>'+
-      '<div class="tbl-wrap"><table>'+
-        '<thead><tr><th>Name</th><th>Company</th><th>Opportunity</th><th>Type</th><th>Territory</th><th>Stage</th><th>Owner</th><th>Amount</th><th>Close Date</th><th>Converted</th></tr></thead>'+
-        '<tbody id="sal-tbody-'+prodKey+'"></tbody>'+
-      '</table><div id="sempty-'+prodKey+'" class="empty" style="display:none">No SALs match</div></div>'+
+      '<div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Company</th><th>Opportunity</th><th>Type</th><th>Territory</th><th>Stage</th><th>Owner</th><th>Amount</th><th>Close Date</th><th>Converted</th></tr></thead><tbody id="sal-tbody-'+prodKey+'"></tbody></table><div id="sempty-'+prodKey+'" class="empty" style="display:none">No SALs match</div></div>'+
     '</div>';
-
-  document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(btn){
-    btn.onclick=function(){st.mode=this.dataset.v;st.barKey=null;st.terr=null;document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});this.classList.add('active');drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);};
-  });
+  document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(btn){btn.onclick=function(){st.mode=this.dataset.v;st.barKey=null;st.terr=null;document.querySelectorAll('#smode-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});this.classList.add('active');drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);};});
   document.getElementById('sterrF-'+prodKey).onchange=function(){st.terrF=this.value;drawSALTable(prodKey,sal);};
   document.getElementById('sstageF-'+prodKey).onchange=function(){st.stageF=this.value;drawSALTable(prodKey,sal);};
   document.getElementById('ssearch-'+prodKey).oninput=function(){st.search=this.value.trim();drawSALTable(prodKey,sal);};
-  drawSALChart(prodKey,prod,sal,chartId,statsId,territories);
-  drawSALTable(prodKey,sal);
+  drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);
 }
-
 function drawSALChart(prodKey,prod,sal,chartId,statsId,territories){
-  var st=salState[prodKey];
-  var buckets={};
-  sal.forEach(function(s){
-    var k=getKey(s['Converted Date'],st.mode);if(!k)return;
-    if(!buckets[k]){buckets[k]={};territories.forEach(function(t){buckets[k][t]=0;});}
-    var t=s['Territory']||'Unknown';buckets[k][t]=(buckets[k][t]||0)+1;
-  });
-  var keys=Object.keys(buckets).sort();
-  var totals=keys.map(function(k){return territories.reduce(function(a,t){return a+(buckets[k][t]||0);},0);});
-  destroyChart(chartId);
-  var canvas=document.getElementById(chartId);if(!canvas)return;
-  chartRegistry[chartId]=new Chart(canvas,{
-    type:'bar',plugins:[countLabelPlugin],
-    data:{labels:keys.map(function(k){return fmtKey(k,st.mode);}),
-      datasets:territories.map(function(t){return{label:t,data:keys.map(function(k){return buckets[k][t]||0;}),
-        backgroundColor:keys.map(function(k){var base=TERR_COLORS[t]||'#888';
-          if(st.barKey&&st.terr)return(k===st.barKey&&t===st.terr)?base:base+'40';
-          if(st.barKey)return k===st.barKey?base:base+'40';if(st.terr)return t===st.terr?base:base+'40';return base;}),
-        borderRadius:3,borderSkipped:false};})}
-    ,
-    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},
-      plugins:{legend:{display:false},tooltip:{callbacks:{title:function(ctx){return fmtKey(keys[ctx[0].dataIndex],st.mode);},label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}}}},
-      scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},
-      onClick:function(e,els){if(!els.length){st.barKey=null;st.terr=null;drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);return;}var ck=keys[els[0].index],ct=territories[els[0].datasetIndex];if(st.barKey===ck&&st.terr===ct){st.barKey=null;st.terr=null;}else{st.barKey=ck;st.terr=ct;}drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);},
-      onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}
-    }
-  });
+  var st=salState[prodKey];var buckets={};
+  sal.forEach(function(s){var k=getKey(s['Converted Date'],st.mode);if(!k)return;if(!buckets[k]){buckets[k]={};territories.forEach(function(t){buckets[k][t]=0;});}var t=s['Territory']||'Unknown';buckets[k][t]=(buckets[k][t]||0)+1;});
+  var keys=Object.keys(buckets).sort();var totals=keys.map(function(k){return territories.reduce(function(a,t){return a+(buckets[k][t]||0);},0);});
+  destroyChart(chartId);var canvas=document.getElementById(chartId);if(!canvas)return;
+  chartRegistry[chartId]=new Chart(canvas,{type:'bar',plugins:[countLabelPlugin],data:{labels:keys.map(function(k){return fmtKey(k,st.mode);}),datasets:territories.map(function(t){return{label:t,data:keys.map(function(k){return buckets[k][t]||0;}),backgroundColor:keys.map(function(k){var base=TERR_COLORS[t]||'#888';if(st.barKey&&st.terr)return(k===st.barKey&&t===st.terr)?base:base+'40';if(st.barKey)return k===st.barKey?base:base+'40';if(st.terr)return t===st.terr?base:base+'40';return base;}),borderRadius:3,borderSkipped:false};})},options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:22}},plugins:{legend:{display:false},tooltip:{callbacks:{title:function(ctx){return fmtKey(keys[ctx[0].dataIndex],st.mode);},label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.raw;},afterBody:function(items){var t=items.reduce(function(a,i){return a+i.raw;},0);return t?['─────────',' Total: '+t]:[];}}}},scales:{x:{stacked:true,grid:{display:false},ticks:{font:{size:11},maxRotation:40,autoSkip:false}},y:{stacked:true,beginAtZero:true,grid:{color:'rgba(0,0,0,0.07)'},ticks:{font:{size:11},stepSize:1}}},onClick:function(e,els){if(!els.length){st.barKey=null;st.terr=null;drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);return;}var ck=keys[els[0].index],ct=territories[els[0].datasetIndex];if(st.barKey===ck&&st.terr===ct){st.barKey=null;st.terr=null;}else{st.barKey=ck;st.terr=ct;}drawSALChart(prodKey,prod,sal,chartId,statsId,territories);drawSALTable(prodKey,sal);},onHover:function(e,els){if(e.native)e.native.target.style.cursor=els.length?'pointer':'default';}}});
   buildStatsStrip(keys,totals,st.mode,statsId);
-  var legEl=document.getElementById('sal-legend-'+prodKey);
-  if(legEl)legEl.innerHTML=territories.map(function(t){return '<div class="legend-item"><div class="legend-dot" style="background:'+(TERR_COLORS[t]||'#888')+'"></div>'+t+'</div>';}).join('');
+  var legEl=document.getElementById('sal-legend-'+prodKey);if(legEl)legEl.innerHTML=territories.map(function(t){return '<div class="legend-item"><div class="legend-dot" style="background:'+(TERR_COLORS[t]||'#888')+'"></div>'+t+'</div>';}).join('');
 }
-
 function drawSALTable(prodKey,sal){
   var st=salState[prodKey];
-  var rows=sal.filter(function(s){
-    if(st.terr&&s['Territory']!==st.terr)return false;
-    if(st.terrF!=='all'&&s['Territory']!==st.terrF)return false;
-    if(st.stageF!=='all'&&s['Stage']!==st.stageF)return false;
-    if(st.search){var q=st.search.toLowerCase();if(!((s['First Name']||'')+' '+(s['Last Name']||'')+' '+(s['Company / Account']||'')+' '+(s['Opportunity Name']||'')).toLowerCase().includes(q))return false;}
-    return true;
-  });
+  var rows=sal.filter(function(s){if(st.terr&&s['Territory']!==st.terr)return false;if(st.terrF!=='all'&&s['Territory']!==st.terrF)return false;if(st.stageF!=='all'&&s['Stage']!==st.stageF)return false;if(st.search){var q=st.search.toLowerCase();if(!((s['First Name']||'')+' '+(s['Last Name']||'')+' '+(s['Company / Account']||'')+' '+(s['Opportunity Name']||'')).toLowerCase().includes(q))return false;}return true;});
   var countEl=document.getElementById('scount-'+prodKey);var titleEl=document.getElementById('stitle-'+prodKey);
   if(countEl)countEl.textContent=rows.length;if(titleEl)titleEl.textContent=st.terr?st.terr+' SALs':'All SALs';
-  var chipEl=document.getElementById('schip-'+prodKey);
-  if(chipEl)chipEl.innerHTML=st.terr?'<div style="padding-bottom:10px"><span class="filter-chip">'+st.terr+'<button onclick="clearSALFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
+  var chipEl=document.getElementById('schip-'+prodKey);if(chipEl)chipEl.innerHTML=st.terr?'<div style="padding-bottom:10px"><span class="filter-chip">'+st.terr+'<button onclick="clearSALFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
   var tbody=document.getElementById('sal-tbody-'+prodKey);var emptyEl=document.getElementById('sempty-'+prodKey);
   if(!rows.length){if(tbody)tbody.innerHTML='';if(emptyEl)emptyEl.style.display='';return;}
   if(emptyEl)emptyEl.style.display='none';
-  if(tbody)tbody.innerHTML=rows.map(function(s){
-    var amt=safeFloat(s['Amount (converted)']);var tc=TERR_COLORS[s['Territory']]||'#888';
-    return '<tr onclick="openSALDrawer(\''+prodKey+'\','+sal.indexOf(s)+')">'+
-      '<td class="td-name">'+(s['First Name']||'')+' '+(s['Last Name']||'')+'</td>'+
-      '<td class="td-muted">'+(s['Company / Account']||'')+'</td>'+
-      '<td class="td-sm">'+(s['Opportunity Name']||'')+'</td>'+
-      '<td>'+salTypeBadge(s['Opportunity Type']||'')+'</td>'+
-      '<td><span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+(s['Territory']||'—')+'</span></td>'+
-      '<td>'+stageBadge(s['Stage']||'')+'</td>'+
-      '<td style="white-space:nowrap;font-size:11px">'+(s['Opportunity Owner']||'')+'</td>'+
-      '<td class="td-amt">'+(amt>0?fmtFull(amt):'—')+'</td>'+
-      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Oppt Close Date']||'')+'</td>'+
-      '<td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Converted Date']||'')+'</td>'+
-    '</tr>';
-  }).join('');
+  if(tbody)tbody.innerHTML=rows.map(function(s){var amt=safeFloat(s['Amount (converted)']);var tc=TERR_COLORS[s['Territory']]||'#888';return '<tr onclick="openSALDrawer(\''+prodKey+'\','+sal.indexOf(s)+')"><td class="td-name">'+(s['First Name']||'')+' '+(s['Last Name']||'')+'</td><td class="td-muted">'+(s['Company / Account']||'')+'</td><td class="td-sm">'+(s['Opportunity Name']||'')+'</td><td>'+salTypeBadge(s['Opportunity Type']||'')+'</td><td><span style="font-size:11px;font-weight:500;padding:2px 7px;border-radius:4px;background:'+tc+'22;color:'+tc+'">'+(s['Territory']||'—')+'</span></td><td>'+stageBadge(s['Stage']||'')+'</td><td style="white-space:nowrap;font-size:11px">'+(s['Opportunity Owner']||'')+'</td><td class="td-amt">'+(amt>0?fmtFull(amt):'—')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Oppt Close Date']||'')+'</td><td style="font-size:11px;color:#6b6b6b;white-space:nowrap">'+(s['Converted Date']||'')+'</td></tr>';}).join('');
 }
 window.clearSALFilter=function(prodKey){if(salState[prodKey]){salState[prodKey].terr=null;salState[prodKey].barKey=null;}renderCurrentView();};
 window.openSALDrawer=function(prodKey,idx){
@@ -1047,13 +746,17 @@ window.openSALDrawer=function(prodKey,idx){
 };
 
 // ══════════════════════════════════════════
-// DEALS TAB
+// DEALS TAB  ← PATCHED: month filter + 2026 notice
 // ══════════════════════════════════════════
 var dealsState={};
+// month lookup used across all deals functions
+var _MNUMS={Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+
 function renderDealsTab(prodKey,prod,deals){
   var el=document.getElementById('panel-'+prodKey+'-deals');
   var chartId='deals-chart-'+prodKey;
-  if(!dealsState[prodKey]){dealsState[prodKey]={stage:null,terrF:'all',typeF:'all',fiscalF:'all',search:''};}
+  // CHANGE 1: added monthF:'all'
+  if(!dealsState[prodKey]){dealsState[prodKey]={stage:null,terrF:'all',typeF:'all',fiscalF:'all',monthF:'all',search:''};}
   var st=dealsState[prodKey];
   var active=deals.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;});
   var won=deals.filter(function(d){return d['Stage']==='Closed Won';});
@@ -1064,9 +767,28 @@ function renderDealsTab(prodKey,prod,deals){
   var weighted=active.reduce(function(a,d){return a+safeFloat(d['Amount'])*safeFloat(d['Probability (%)'])/100;},0);
   var withAmt=active.filter(function(d){return safeFloat(d['Amount'])>0;}).length;
 
+  // Build month pills — only show months that have at least one deal in 2026
+  var monthPillsHtml=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(function(m){
+    var mm=_MNUMS[m];
+    var has=deals.some(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+    if(!has)return '';
+    return '<button class="pill'+(st.monthF===m?' active':'')+'" data-mf="'+m+'" style="font-size:11px;padding:4px 11px">'+m+'</button>';
+  }).join('');
+
+  // CHANGE 2: panel-title + 2026 notice badge + month filter strip
   el.innerHTML=
     '<div class="panel-title">'+prod.label+' — Deals</div>'+
-    '<div class="panel-sub">All pipeline deals · click bars to filter table</div>'+
+    '<div class="panel-sub" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">All pipeline deals · click bars to filter table <span style="font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:#fef3c7;color:#92400e;border:1px solid #fde68a">📅 Month filter uses 2026 data only</span></div>'+
+    '<div class="chart-card" style="margin-bottom:16px;padding:16px 20px">'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+        '<span style="font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">Filter by month (2026):</span>'+
+        '<div style="display:flex;gap:4px;flex-wrap:wrap" id="month-pills-'+prodKey+'">'+
+          '<button class="pill'+(st.monthF==='all'?' active':'')+'" data-mf="all" style="font-size:11px;padding:4px 11px">All</button>'+
+          monthPillsHtml+
+        '</div>'+
+      '</div>'+
+      '<div id="month-snapshot-'+prodKey+'" style="display:none;margin-top:12px;border-top:1px solid rgba(0,0,0,0.08);padding-top:12px"></div>'+
+    '</div>'+
     '<div class="kpis">'+
       '<div class="kpi c-blue"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+deals.length+'</div><div class="kpi-sub">'+active.length+' active (Opp+)</div></div>'+
       '<div class="kpi c-green"><div class="kpi-label">Active Pipeline</div><div class="kpi-val">'+fmt(totalPipe)+'</div><div class="kpi-sub">'+withAmt+' with amount</div></div>'+
@@ -1082,10 +804,7 @@ function renderDealsTab(prodKey,prod,deals){
     '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
-        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-          '<span class="table-title" id="dtitle-'+prodKey+'">All Deals</span>'+
-          '<span class="table-count" id="dcount-'+prodKey+'">0</span>'+
-        '</div>'+
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="table-title" id="dtitle-'+prodKey+'">All Deals</span><span class="table-count" id="dcount-'+prodKey+'">0</span></div>'+
         '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
           (territories.length?'<select class="sel" id="dterrF-'+prodKey+'"><option value="all">All territories</option>'+territories.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('')+'</select>':'')+
           '<select class="sel" id="dtypeF-'+prodKey+'"><option value="all">All types</option><option value="New Business">New Business</option><option value="Expansion">Expansion</option><option value="Renewal">Renewal</option></select>'+
@@ -1106,6 +825,73 @@ function renderDealsTab(prodKey,prod,deals){
   document.getElementById('dtypeF-'+prodKey).onchange=function(){st.typeF=this.value;drawDealsTable(prodKey,deals);};
   var dfiscalEl=document.getElementById('dfiscalF-'+prodKey);if(dfiscalEl)dfiscalEl.onchange=function(){st.fiscalF=this.value;drawDealsTable(prodKey,deals);};
   document.getElementById('dsearch-'+prodKey).oninput=function(){st.search=this.value.trim();drawDealsTable(prodKey,deals);};
+
+  // CHANGE 3: month pill click handlers
+  document.querySelectorAll('#month-pills-'+prodKey+' .pill').forEach(function(btn){
+    btn.onclick=function(){
+      st.monthF=this.dataset.mf;
+      document.querySelectorAll('#month-pills-'+prodKey+' .pill').forEach(function(b){b.classList.remove('active');});
+      this.classList.add('active');
+      // Update snapshot panel
+      var snapEl=document.getElementById('month-snapshot-'+prodKey);
+      if(st.monthF==='all'){
+        snapEl.style.display='none';snapEl.innerHTML='';
+      } else {
+        var mm=_MNUMS[st.monthF];
+        var mDeals=deals.filter(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+        var stageBreak={};STAGE_ORDER.forEach(function(s){stageBreak[s]=0;});
+        mDeals.forEach(function(d){stageBreak[d['Stage']]=(stageBreak[d['Stage']]||0)+1;});
+        var mAmt=mDeals.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+        var total=mDeals.length;
+        snapEl.innerHTML=
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+            '<span style="font-size:12px;font-weight:700">'+st.monthF+' 2026 — '+total+' deal'+(total!==1?'s':'')+' created</span>'+
+            '<span style="font-size:12px;font-weight:600;color:#0e7b4c">Pipeline: '+fmt(mAmt)+'</span>'+
+          '</div>'+
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">'+
+            STAGE_ORDER.filter(function(s){return stageBreak[s]>0;}).map(function(s){
+              var cnt=stageBreak[s],pct=Math.round(cnt/Math.max(total,1)*100),col=STAGE_COLORS[s]||'#888';
+              return '<div style="display:flex;align-items:center;gap:8px">'+
+                '<span style="font-size:10px;font-weight:600;min-width:110px;padding:2px 7px;border-radius:4px;background:'+col+'22;color:'+col+'">'+s+'</span>'+
+                '<div style="flex:1;height:16px;background:#f4f4f8;border-radius:3px;overflow:hidden">'+
+                  '<div style="height:100%;width:'+Math.max(pct,4)+'%;background:'+col+'"></div></div>'+
+                '<span style="font-size:11px;font-weight:600;min-width:16px">'+cnt+'</span></div>';
+            }).join('')+
+          '</div>';
+        snapEl.style.display='';
+      }
+      drawDealsChart(prodKey,prod,deals,chartId);
+      drawDealsTable(prodKey,deals);
+    };
+  });
+
+  // Restore snapshot if month was previously selected
+  if(st.monthF!=='all'){
+    var snapEl=document.getElementById('month-snapshot-'+prodKey);
+    var mm=_MNUMS[st.monthF];
+    var mDeals=deals.filter(function(d){return (d['Created Date']||'').startsWith('2026-'+mm);});
+    var stageBreak={};STAGE_ORDER.forEach(function(s){stageBreak[s]=0;});
+    mDeals.forEach(function(d){stageBreak[d['Stage']]=(stageBreak[d['Stage']]||0)+1;});
+    var mAmt=mDeals.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+    var total=mDeals.length;
+    snapEl.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+        '<span style="font-size:12px;font-weight:700">'+st.monthF+' 2026 — '+total+' deal'+(total!==1?'s':'')+' created</span>'+
+        '<span style="font-size:12px;font-weight:600;color:#0e7b4c">Pipeline: '+fmt(mAmt)+'</span>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 24px">'+
+        STAGE_ORDER.filter(function(s){return stageBreak[s]>0;}).map(function(s){
+          var cnt=stageBreak[s],pct=Math.round(cnt/Math.max(total,1)*100),col=STAGE_COLORS[s]||'#888';
+          return '<div style="display:flex;align-items:center;gap:8px">'+
+            '<span style="font-size:10px;font-weight:600;min-width:110px;padding:2px 7px;border-radius:4px;background:'+col+'22;color:'+col+'">'+s+'</span>'+
+            '<div style="flex:1;height:16px;background:#f4f4f8;border-radius:3px;overflow:hidden">'+
+              '<div style="height:100%;width:'+Math.max(pct,4)+'%;background:'+col+'"></div></div>'+
+            '<span style="font-size:11px;font-weight:600;min-width:16px">'+cnt+'</span></div>';
+        }).join('')+
+      '</div>';
+    snapEl.style.display='';
+  }
+
   drawDealsChart(prodKey,prod,deals,chartId);
   drawDealsTable(prodKey,deals);
 }
@@ -1114,7 +900,12 @@ function drawDealsChart(prodKey,prod,deals,chartId){
   var st=dealsState[prodKey];
   var terrChartEl=document.getElementById('dterrChart-'+prodKey);
   var terrFilter=terrChartEl?terrChartEl.value:'all';
-  var data=terrFilter==='all'?deals:deals.filter(function(d){return d['Territory']===terrFilter;});
+  // CHANGE 4: apply month filter to chart data
+  var data=deals.filter(function(d){
+    if(terrFilter!=='all'&&d['Territory']!==terrFilter)return false;
+    if(st.monthF&&st.monthF!=='all'&&!(d['Created Date']||'').startsWith('2026-'+_MNUMS[st.monthF]))return false;
+    return true;
+  });
   var stageAmts={},stageCounts={};
   STAGE_ORDER.forEach(function(s){stageAmts[s]=0;stageCounts[s]=0;});
   data.forEach(function(d){var s=d['Stage'],amt=safeFloat(d['Amount']);stageAmts[s]=(stageAmts[s]||0)+amt;stageCounts[s]=(stageCounts[s]||0)+1;});
@@ -1173,11 +964,14 @@ function drawDealsTable(prodKey,deals){
     if(st.terrF!=='all'&&d['Territory']!==st.terrF)return false;
     if(st.typeF!=='all'&&d['Type']!==st.typeF)return false;
     if(st.fiscalF!=='all'&&d['Fiscal Period']!==st.fiscalF)return false;
+    // CHANGE 5: month filter on table
+    if(st.monthF&&st.monthF!=='all'&&!(d['Created Date']||'').startsWith('2026-'+_MNUMS[st.monthF]))return false;
     if(st.search){var q=st.search.toLowerCase();if(!((d['Account Name']||'')+' '+(d['Opportunity Name']||'')).toLowerCase().includes(q))return false;}
     return true;
   });
   var countEl=document.getElementById('dcount-'+prodKey);var titleEl=document.getElementById('dtitle-'+prodKey);
-  if(countEl)countEl.textContent=rows.length;if(titleEl)titleEl.textContent=st.stage?st.stage+' deals':'All Deals';
+  if(countEl)countEl.textContent=rows.length;
+  if(titleEl)titleEl.textContent=(st.monthF&&st.monthF!=='all'?st.monthF+' 2026 · ':'')+( st.stage?st.stage+' deals':'All Deals');
   var chipEl=document.getElementById('dchip-'+prodKey);
   if(chipEl)chipEl.innerHTML=st.stage?'<div style="padding-bottom:10px"><span class="filter-chip"><span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:'+(STAGE_COLORS[st.stage]||'#888')+';display:inline-block"></span>'+st.stage+'</span><button onclick="clearDealFilter(\''+prodKey+'\')">&#x2715;</button></span></div>':'';
   var tbody=document.getElementById('deals-tbody-'+prodKey);var emptyEl=document.getElementById('dempty-'+prodKey);
