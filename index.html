@@ -575,7 +575,8 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
     '<div class="two-col">'+
       '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">Lead status breakdown</div><div class="chart-hint" style="margin-bottom:16px">All leads at latest status</div><div id="pov-leadstatus-'+prodKey+'"></div></div>'+
       '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">By territory (SAL)</div><div class="chart-hint" style="margin-bottom:16px">SAL count per territory</div><div id="pov-terr-'+prodKey+'"></div></div>'+
-    '</div>';
+    '</div>'+
+    '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">Lost deals — stage before loss</div><div class="chart-hint" style="margin-bottom:16px">Stage deals were in before Closed Lost · count &amp; %</div><div id="pov-lost-'+prodKey+'"></div></div>';
   el.innerHTML=html;
   var fSteps=[{label:'Total Leads',count:leads.length,color:prod.color},{label:'Discovery Set',count:discSet,color:prod.color+'dd'},{label:'Discovery Done',count:discDone,color:prod.color+'bb'},{label:'SAL',count:sal.length,color:'#0e7b4c'},{label:'Opportunity+',count:opps,color:'#0f766e'},{label:'Commitment + Procurement',count:commitProc,color:'#fb923c'},{label:'Closed Won',count:won.length,color:'#22c55e'}];
   var fHTML='';
@@ -594,6 +595,27 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
   var tEntries=Object.entries(tMap).sort(function(a,b){return b[1]-a[1];});var maxT2=tEntries.length?tEntries[0][1]:1;var tHTML='';
   tEntries.forEach(function(e){var t=e[0],cnt=e[1];var col=TERR_COLORS[t]||'#888';var pct=Math.round(cnt/maxT2*100);tHTML+='<div class="hbar-row"><div class="hbar-label">'+t+'</div><div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,6)+'%;background:'+col+'">'+(pct>=20?cnt:'')+'</div></div><div class="hbar-val" style="color:'+col+';font-weight:700">'+cnt+'</div></div>';});
   document.getElementById('pov-terr-'+prodKey).innerHTML=tHTML||'<div class="empty">No territory data</div>';
+  // Lost from stage horizontal bars
+  var FROM_STAGE_COLORS={'Sales Accepted':'#4f7bff','Interest':'#f59e0b','Opportunity':'#10b981','RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa','Commitment':'#22c55e','Pilot':'#be185d','Closed Lost':'#ef4444'};
+  var lostDeals=deals.filter(function(d){return d['Stage']==='Closed Lost';});
+  var lostTotal=lostDeals.length;
+  var lfMap={};
+  lostDeals.forEach(function(d){var s=d['From Stage']||'Unknown';lfMap[s]=(lfMap[s]||0)+1;});
+  var lfEntries=Object.entries(lfMap).sort(function(a,b){return b[1]-a[1];});
+  var lfHTML='';
+  if(lostTotal>0){
+    lfEntries.forEach(function(e){
+      var s=e[0],cnt=e[1],pct=Math.round(cnt/lostTotal*100),col=FROM_STAGE_COLORS[s]||'#9ca3af';
+      lfHTML+='<div class="hbar-row">'+
+        '<div style="width:130px;flex-shrink:0"><span style="font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;background:'+col+'22;color:'+col+'">'+s+'</span></div>'+
+        '<div class="hbar-track"><div class="hbar-fill" style="width:'+Math.max(pct,3)+'%;background:'+col+'">'+(pct>=15?cnt:'')+'</div></div>'+
+        '<div class="hbar-val">'+cnt+' <span style="font-weight:400;color:#9090b0;font-size:10px">('+pct+'%)</span></div>'+
+      '</div>';
+    });
+    lfHTML+='<div style="margin-top:6px;font-size:11px;color:#9090b0">Total lost: <strong>'+lostTotal+'</strong></div>';
+  } else { lfHTML='<div class="empty">No lost deals</div>'; }
+  var povLostEl=document.getElementById('pov-lost-'+prodKey);
+  if(povLostEl)povLostEl.innerHTML=lfHTML;
 }
 
 // ══════════════════════════════════════════
@@ -618,15 +640,6 @@ function renderLeadsTab(prodKey,prod,leads){
       '<div style="position:relative;height:260px;"><canvas id="'+chartId+'"></canvas></div>'+
       '<div class="stats-strip" id="'+statsId+'"></div>'+
       '<div class="legend" id="lleads-legend-'+prodKey+'"></div>'+
-    '</div>'+
-    '<div class="chart-card" style="margin-bottom:16px">'+
-      '<div class="chart-header">'+
-        '<div><div class="chart-title">Lost deals — stage before loss</div><div class="chart-hint">Which stage deals were in before moving to Closed Lost</div></div>'+
-      '</div>'+
-      '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">'+
-        '<div style="position:relative;height:220px;width:220px;flex-shrink:0"><canvas id="lost-stage-chart-'+prodKey+'"></canvas></div>'+
-        '<div id="lost-stage-legend-'+prodKey+'" style="flex:1;min-width:180px"></div>'+
-      '</div>'+
     '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
@@ -873,6 +886,15 @@ function renderDealsTab(prodKey,prod,deals){
       '<div style="position:relative;height:280px;"><canvas id="'+chartId+'"></canvas></div>'+
       '<div class="stats-strip" id="dstats-'+prodKey+'"></div>'+
     '</div>'+
+    '<div class="chart-card" style="margin-bottom:16px">'+
+      '<div class="chart-header" style="margin-bottom:12px">'+
+        '<div><div class="chart-title">Stage conversion &amp; velocity</div><div class="chart-hint">Funnel view + velocity table — based on current deal distribution</div></div>'+
+        '<div class="pill-group" id="scv-mode-'+prodKey+'"><button class="pill active" data-v="funnel">Conversion Funnel</button><button class="pill" data-v="table">Velocity Table</button></div>'+
+      '</div>'+
+      '<div id="scv-summary-'+prodKey+'" style="display:flex;gap:32px;background:#f8f7ff;border-radius:8px;padding:12px 20px;margin-bottom:16px;flex-wrap:wrap"></div>'+
+      '<div id="scv-funnel-'+prodKey+'"></div>'+
+      '<div id="scv-table-'+prodKey+'" style="display:none"></div>'+
+    '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="table-title" id="dtitle-'+prodKey+'">All Deals</span><span class="table-count" id="dcount-'+prodKey+'">0</span></div>'+
@@ -965,48 +987,119 @@ function renderDealsTab(prodKey,prod,deals){
   }
 
   drawDealsChart(prodKey,prod,deals,chartId);
-  drawLostFromStageChart(prodKey,deals);
+  drawStageVelocity(prodKey,deals);
   drawDealsTable(prodKey,deals);
 }
 
-function drawLostFromStageChart(prodKey,deals){
+function drawStageVelocity(prodKey,deals){
+  var PIPE_STAGES=['Sales Accepted','Interest','Opportunity','RFP','Procurement','Finance Approval','Commitment'];
+  var won=deals.filter(function(d){return d['Stage']==='Closed Won';});
   var lost=deals.filter(function(d){return d['Stage']==='Closed Lost';});
-  var total=lost.length;
-  if(!total)return;
-  var FROM_STAGE_COLORS={'Sales Accepted':'#4f7bff','Interest':'#f59e0b','Opportunity':'#10b981','RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa','Commitment':'#22c55e','Pilot':'#be185d','Closed Lost':'#ef4444'};
-  var counts={};
-  lost.forEach(function(d){var s=d['From Stage']||'Unknown';counts[s]=(counts[s]||0)+1;});
-  var entries=Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
-  var labels=entries.map(function(e){return e[0];});
-  var data=entries.map(function(e){return e[1];});
-  var colors=labels.map(function(l){return FROM_STAGE_COLORS[l]||'#9ca3af';});
-  var chartId='lost-stage-chart-'+prodKey;
-  destroyChart(chartId);
-  var canvas=document.getElementById(chartId);
-  if(!canvas)return;
-  chartRegistry[chartId]=new Chart(canvas,{
-    type:'doughnut',
-    data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
-    options:{responsive:false,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var pct=Math.round(ctx.raw/total*100);return ' '+ctx.label+': '+ctx.raw+' ('+pct+'%)';}}}}}
-  });
-  // Legend
-  var legEl=document.getElementById('lost-stage-legend-'+prodKey);
-  if(legEl)legEl.innerHTML=entries.map(function(e){
-    var pct=Math.round(e[1]/total*100);
-    var col=FROM_STAGE_COLORS[e[0]]||'#9ca3af';
-    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
-      '<div style="width:10px;height:10px;border-radius:2px;background:'+col+';flex-shrink:0"></div>'+
-      '<div style="flex:1">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
-          '<span style="font-size:12px;font-weight:600">'+e[0]+'</span>'+
-          '<span style="font-size:12px;font-weight:700;color:'+col+'">'+e[1]+' <span style="font-weight:400;color:var(--text-muted)">'+pct+'%</span></span>'+
-        '</div>'+
-        '<div style="height:5px;background:#f0f0f6;border-radius:3px;overflow:hidden">'+
-          '<div style="height:100%;width:'+Math.max(pct,3)+'%;background:'+col+';border-radius:3px"></div>'+
-        '</div>'+
+  var totalCreated=deals.length;
+  var wonAmt=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var lostAmt=lost.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var winRate=won.length+lost.length>0?Math.round(won.length/(won.length+lost.length)*100):0;
+  var allAge=deals.filter(function(d){return safeFloat(d['Age'])>0;});
+  var avgAge=allAge.length?Math.round(allAge.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/allAge.length):0;
+  var totalPipe=deals.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  // Summary strip
+  var sumEl=document.getElementById('scv-summary-'+prodKey);
+  if(sumEl)sumEl.innerHTML=
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">TOTAL CREATED</div><div style="font-size:22px;font-weight:800;color:#301894">'+totalCreated+'</div></div>'+
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">CLOSED WON</div><div style="font-size:22px;font-weight:800;color:#0e7b4c">'+won.length+'</div><div style="font-size:11px;color:#9090b0">'+winRate+'% win rate</div></div>'+
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">CLOSED LOST</div><div style="font-size:22px;font-weight:800;color:#b91c1c">'+lost.length+'</div><div style="font-size:11px;color:#9090b0">'+winRate+'% from any stage · '+fmt(lostAmt)+' lost</div></div>';
+  // Build stage data
+  var stageData=PIPE_STAGES.map(function(s){
+    var recs=deals.filter(function(d){return d['Stage']===s;});
+    var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+    var ages=recs.filter(function(d){return safeFloat(d['Age'])>0;});
+    var avgA=ages.length?Math.round(ages.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/ages.length):null;
+    var avgV=recs.length?Math.round(amt/recs.length):0;
+    return {stage:s,count:recs.length,amt:amt,avgAge:avgA,avgVal:avgV,col:STAGE_COLORS[s]||'#888'};
+  }).filter(function(r){return r.count>0;});
+  // Add Closed Won row
+  var wonAges=won.filter(function(d){return safeFloat(d['Age'])>0;});
+  var wonAvgAge=wonAges.length?Math.round(wonAges.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/wonAges.length):null;
+  stageData.push({stage:'Closed Won',count:won.length,amt:wonAmt,avgAge:wonAvgAge,avgVal:won.length?Math.round(wonAmt/won.length):0,col:'#16a34a'});
+  // Add Closed Lost row
+  var lostAges=lost.filter(function(d){return safeFloat(d['Age'])>0;});
+  var lostAvgAge=lostAges.length?Math.round(lostAges.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/lostAges.length):null;
+  stageData.push({stage:'Closed Lost',count:lost.length,amt:0,avgAge:lostAvgAge,avgVal:null,isBad:true,col:'#ef4444'});
+  var maxCount=Math.max.apply(null,stageData.map(function(r){return r.count;}));
+  // Funnel view
+  var fHTML='';
+  stageData.forEach(function(r,i){
+    var pct=maxCount>0?Math.max(Math.round(r.count/maxCount*100),4):4;
+    var isLast=(i===stageData.length-1);
+    var nextLabel=!isLast?stageData[i+1].stage:null;
+    var convRate=(!isLast&&r.count>0)?Math.round(stageData[i+1].count/r.count*100):null;
+    var rightInfo=r.count+' deal'+(r.count!==1?'s':'')+(r.amt>0?' · '+fmt(r.amt):'');
+    var isDashed=(r.stage==='Closed Lost');
+    fHTML+='<div style="margin-bottom:8px'+(isDashed?';border-top:2px dashed #fca5a5;padding-top:12px;margin-top:4px':'')+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'+
+        '<span style="font-size:13px;font-weight:600;color:'+(isDashed?'#b91c1c':'var(--text)')+'">'+(isDashed?'<span style="font-size:10px;font-weight:500;color:#9090b0">can exit from any stage</span><br>':'')+r.stage+'</span>'+
+        '<span style="font-size:12px;font-weight:600;color:'+r.col+'">'+rightInfo+'</span>'+
       '</div>'+
+      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+r.col+'">'+(pct>=20?r.count:'')+'</div></div>'+
+      (convRate!==null?'<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge" style="background:'+(convRate<30?'#fee2e2':convRate<60?'#fef3c7':'#dcfce7')+';color:'+(convRate<30?'#b91c1c':convRate<60?'#92400e':'#166534')+'">'+convRate+'% → next stage</span><div class="funnel-line"></div></div>':'')+
     '</div>';
-  }).join('')+'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.08);font-size:11px;color:var(--text-muted)">Total lost: <strong>'+total+'</strong></div>';
+  });
+  var fEl=document.getElementById('scv-funnel-'+prodKey);
+  if(fEl)fEl.innerHTML=fHTML;
+  // Table view
+  var tblHTML='<div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr>'+
+    '<th style="background:#f8f7ff;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Stage</th>'+
+    '<th style="background:#f8f7ff;padding:9px 12px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Deals</th>'+
+    '<th style="background:#f8f7ff;padding:9px 12px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Total Value</th>'+
+    '<th style="background:#f8f7ff;padding:9px 12px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Avg Value</th>'+
+    '<th style="background:#f8f7ff;padding:9px 12px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Avg Age (Days)</th>'+
+    '</tr></thead><tbody>';
+  stageData.forEach(function(r){
+    var isDashed=r.isBad;
+    tblHTML+='<tr style="'+(isDashed?'border-top:2px dashed #fca5a5;':'')+'">'+
+      '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04)">'+
+        '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;background:'+r.col+'22;color:'+r.col+'">'+r.stage+'</span>'+
+        (isDashed?'<div style="font-size:10px;color:#9090b0;margin-top:2px">can exit from any stage</div>':'')+
+      '</td>'+
+      '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04);text-align:right;font-weight:700;color:'+r.col+'">'+r.count+'</td>'+
+      '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04);text-align:right">'+(!isDashed&&r.amt>0?fmt(r.amt):'—')+'</td>'+
+      '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04);text-align:right">'+(!isDashed&&r.avgVal>0?'$'+r.avgVal.toLocaleString():'—')+'</td>'+
+      '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04);text-align:right">'+
+        (r.avgAge!==null?'<span style="font-weight:700;color:'+(r.avgAge>60?'#b91c1c':r.avgAge>30?'#92400e':'#0e7b4c')+'">'+r.avgAge+'d</span>':'—')+
+      '</td>'+
+    '</tr>';
+  });
+  // Summary footer
+  tblHTML+='<tr style="background:#f8f7ff">'+
+    '<td style="padding:9px 12px;font-size:11px;font-weight:600;color:#5a5a7a">Win Rate / Avg Age / Total Pipeline</td>'+
+    '<td></td><td></td>'+
+    '<td style="padding:9px 12px;text-align:right">'+
+      '<span style="font-size:12px;font-weight:700;color:#0e7b4c">'+winRate+'%</span>'+
+      '<span style="font-size:10px;color:#9090b0"> '+won.length+' won / '+lost.length+' lost</span>'+
+    '</td>'+
+    '<td style="padding:9px 12px;text-align:right">'+
+      (avgAge>0?'<span style="font-weight:700">'+avgAge+'d</span> <span style="font-size:10px;color:#9090b0">across all stages</span>':'—')+
+    '</td>'+
+  '</tr>';
+  tblHTML+='</tbody></table></div>';
+  var tEl=document.getElementById('scv-table-'+prodKey);
+  if(tEl)tEl.innerHTML=tblHTML;
+  // Wire toggle pills
+  var pillGroup=document.getElementById('scv-mode-'+prodKey);
+  if(pillGroup){
+    pillGroup.querySelectorAll('.pill').forEach(function(btn){
+      btn.onclick=function(){
+        pillGroup.querySelectorAll('.pill').forEach(function(b){b.classList.remove('active');});
+        this.classList.add('active');
+        var v=this.dataset.v;
+        var fEl2=document.getElementById('scv-funnel-'+prodKey);
+        var tEl2=document.getElementById('scv-table-'+prodKey);
+        if(fEl2)fEl2.style.display=(v==='funnel'?'':'none');
+        if(tEl2)tEl2.style.display=(v==='table'?'':'none');
+      };
+    });
+  }
 }
 
 function drawDealsChart(prodKey,prod,deals,chartId){
