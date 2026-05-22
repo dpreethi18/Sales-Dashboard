@@ -425,12 +425,8 @@ document.querySelectorAll('.iob-btn').forEach(function(btn){
 });
 function applyIOB(arr, field){
   if(currentIOB==='all') return arr;
-  var INBOUND_SRC=['Inbound','Content Download','Events','Webinar','Warmly','E-books','Website Visitor','Referral'];
   return arr.filter(function(r){
-    var v=(r[field]||'').trim();
-    if(currentIOB==='Inbound') return INBOUND_SRC.indexOf(v)>-1;
-    if(currentIOB==='Outbound') return v==='Outbound'||v==='RFP Sourcing'||v==='Sales Outreach';
-    return true;
+    return (r[field]||'').trim()===currentIOB;
   });
 }
 // ── NAV ──
@@ -492,13 +488,15 @@ function renderOverall(){
     '<div class="kpi c-purple"><div class="kpi-label">Total Deals</div><div class="kpi-val">'+ALL_DEALS.length+'</div><div class="kpi-sub">'+ALL_DEALS.filter(function(d){return d['Stage']==='Closed Lost';}).length+' lost</div></div>';
   var discSet=ALL_LEADS.filter(function(l){return ['Discovery Set','DG Qualified','SAL','LTO'].indexOf(l['Lead Status'])>-1;}).length;
   var discDone=ALL_LEADS.filter(function(l){return l['Discovery Done']==='1';}).length;
-  var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+  var opps=active.filter(function(d){return ['Opportunity','RFP','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+  var commitProc=active.filter(function(d){return ['Commitment','Procurement'].indexOf(d['Stage'])>-1;}).length;
   var steps=[
     {label:'Total Leads',count:totalLeads,color:'#1B0E51'},
     {label:'Discovery Set',count:discSet,color:'#4338ca'},
     {label:'Discovery Done',count:discDone,color:'#0369a1'},
     {label:'SAL',count:totalSAL,color:'#0e7b4c'},
     {label:'Opportunity+',count:opps,color:'#0f766e'},
+    {label:'Commitment + Procurement',count:commitProc,color:'#fb923c'},
     {label:'Closed Won',count:won.length,color:'#22c55e'}
   ];
   var fHTML='';
@@ -560,7 +558,8 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
   var salLeads=leads.filter(function(l){return l['Lead Status']==='SAL';});
   var discSet=leads.filter(function(l){return ['Discovery Set','DG Qualified','SAL','LTO'].indexOf(l['Lead Status'])>-1;}).length;
   var discDone=leads.filter(function(l){return l['Discovery Done']==='1';}).length;
-  var opps=active.filter(function(d){return ['Opportunity','Commitment','Procurement','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+  var opps=active.filter(function(d){return ['Opportunity','RFP','Finance Approval'].indexOf(d['Stage'])>-1;}).length;
+  var commitProc=active.filter(function(d){return ['Commitment','Procurement'].indexOf(d['Stage'])>-1;}).length;
   var html='<div class="panel-title">'+prod.label+' — Overview</div>'+
     '<div class="panel-sub">Active pipeline · leads · conversion</div>'+
     '<div class="kpis">'+
@@ -578,7 +577,7 @@ function renderProductOverview(prodKey,prod,deals,leads,sal){
       '<div class="chart-card"><div class="chart-title" style="margin-bottom:4px">By territory (SAL)</div><div class="chart-hint" style="margin-bottom:16px">SAL count per territory</div><div id="pov-terr-'+prodKey+'"></div></div>'+
     '</div>';
   el.innerHTML=html;
-  var fSteps=[{label:'Total Leads',count:leads.length,color:prod.color},{label:'Discovery Set',count:discSet,color:prod.color+'dd'},{label:'Discovery Done',count:discDone,color:prod.color+'bb'},{label:'SAL',count:sal.length,color:'#0e7b4c'},{label:'Opportunity+',count:opps,color:'#0f766e'},{label:'Closed Won',count:won.length,color:'#22c55e'}];
+  var fSteps=[{label:'Total Leads',count:leads.length,color:prod.color},{label:'Discovery Set',count:discSet,color:prod.color+'dd'},{label:'Discovery Done',count:discDone,color:prod.color+'bb'},{label:'SAL',count:sal.length,color:'#0e7b4c'},{label:'Opportunity+',count:opps,color:'#0f766e'},{label:'Commitment + Procurement',count:commitProc,color:'#fb923c'},{label:'Closed Won',count:won.length,color:'#22c55e'}];
   var fHTML='';
   fSteps.forEach(function(step,i){var base=leads.length||1;var pct=Math.max(4,Math.round(step.count/base*100));fHTML+='<div class="funnel-step"><div class="funnel-step-hdr"><span class="funnel-step-label">'+step.label+'</span><span class="funnel-step-count">'+step.count+'</span></div><div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+step.color+'">'+(pct>=15?pct+'%':'')+'</div></div></div>';if(i<fSteps.length-1){var rate=step.count>0?Math.round(fSteps[i+1].count/step.count*100):0;fHTML+='<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge">↓ '+rate+'%</span><div class="funnel-line"></div></div>';}});
   document.getElementById('pov-funnel-'+prodKey).innerHTML=fHTML;
