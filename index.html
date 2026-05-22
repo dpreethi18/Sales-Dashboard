@@ -992,61 +992,81 @@ function renderDealsTab(prodKey,prod,deals){
 }
 
 function drawStageVelocity(prodKey,deals){
-  var PIPE_STAGES=['Sales Accepted','Interest','Opportunity','RFP','Procurement','Finance Approval','Commitment'];
+  // Funnel stages as user defined:
+  // Total Created (all deals = Sales Accepted entry)
+  // → Interest → Opportunity → Procurement+Finance Approval → Commitment → Closed Won
   var won=deals.filter(function(d){return d['Stage']==='Closed Won';});
   var lost=deals.filter(function(d){return d['Stage']==='Closed Lost';});
-  var totalCreated=deals.length;
   var wonAmt=won.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var lostAmt=lost.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   var winRate=won.length+lost.length>0?Math.round(won.length/(won.length+lost.length)*100):0;
   var allAge=deals.filter(function(d){return safeFloat(d['Age'])>0;});
   var avgAge=allAge.length?Math.round(allAge.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/allAge.length):0;
-  var totalPipe=deals.filter(function(d){return ACTIVE_STAGES.indexOf(d['Stage'])>-1;}).reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
   // Summary strip
   var sumEl=document.getElementById('scv-summary-'+prodKey);
   if(sumEl)sumEl.innerHTML=
-    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">TOTAL CREATED</div><div style="font-size:22px;font-weight:800;color:#301894">'+totalCreated+'</div></div>'+
+    '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">TOTAL CREATED</div><div style="font-size:22px;font-weight:800;color:#301894">'+deals.length+'</div></div>'+
     '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">CLOSED WON</div><div style="font-size:22px;font-weight:800;color:#0e7b4c">'+won.length+'</div><div style="font-size:11px;color:#9090b0">'+winRate+'% win rate</div></div>'+
     '<div><div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#9090b0">CLOSED LOST</div><div style="font-size:22px;font-weight:800;color:#b91c1c">'+lost.length+'</div><div style="font-size:11px;color:#9090b0">'+winRate+'% from any stage · '+fmt(lostAmt)+' lost</div></div>';
-  // Build stage data
-  var stageData=PIPE_STAGES.map(function(s){
-    var recs=deals.filter(function(d){return d['Stage']===s;});
+  // Helper: build a stage row (supports combined stages)
+  function makeRow(label, stageNames, col){
+    var recs=deals.filter(function(d){return stageNames.indexOf(d['Stage'])>-1;});
     var amt=recs.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
     var ages=recs.filter(function(d){return safeFloat(d['Age'])>0;});
     var avgA=ages.length?Math.round(ages.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/ages.length):null;
     var avgV=recs.length?Math.round(amt/recs.length):0;
-    return {stage:s,count:recs.length,amt:amt,avgAge:avgA,avgVal:avgV,col:STAGE_COLORS[s]||'#888'};
-  }).filter(function(r){return r.count>0;});
-  // Add Closed Won row
+    return {label:label,count:recs.length,amt:amt,avgAge:avgA,avgVal:avgV,col:col};
+  }
+  // Total Created row = all deals (the Sales Accepted entry point)
+  var totalAllAmt=deals.reduce(function(a,d){return a+safeFloat(d['Amount']);},0);
+  var totalAllAges=deals.filter(function(d){return safeFloat(d['Age'])>0;});
+  var totalAvgAge=totalAllAges.length?Math.round(totalAllAges.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/totalAllAges.length):null;
+  var stageData=[
+    {label:'Total Created (Sales Accepted)',count:deals.length,amt:totalAllAmt,avgAge:totalAvgAge,avgVal:deals.length?Math.round(totalAllAmt/deals.length):0,col:'#4f7bff'},
+    makeRow('Interest',['Interest'],'#f59e0b'),
+    makeRow('Opportunity',['Opportunity'],'#10b981'),
+    makeRow('Procurement + Finance Approval',['Procurement','Finance Approval'],'#fb923c'),
+    makeRow('Commitment',['Commitment'],'#22c55e')
+  ];
+  // Add Closed Won
   var wonAges=won.filter(function(d){return safeFloat(d['Age'])>0;});
   var wonAvgAge=wonAges.length?Math.round(wonAges.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/wonAges.length):null;
-  stageData.push({stage:'Closed Won',count:won.length,amt:wonAmt,avgAge:wonAvgAge,avgVal:won.length?Math.round(wonAmt/won.length):0,col:'#16a34a'});
-  // Add Closed Lost row
+  stageData.push({label:'Closed Won',count:won.length,amt:wonAmt,avgAge:wonAvgAge,avgVal:won.length?Math.round(wonAmt/won.length):0,col:'#16a34a'});
+  // Add Closed Lost (dashed)
   var lostAges=lost.filter(function(d){return safeFloat(d['Age'])>0;});
   var lostAvgAge=lostAges.length?Math.round(lostAges.reduce(function(a,d){return a+safeFloat(d['Age']);},0)/lostAges.length):null;
-  stageData.push({stage:'Closed Lost',count:lost.length,amt:0,avgAge:lostAvgAge,avgVal:null,isBad:true,col:'#ef4444'});
-  var maxCount=Math.max.apply(null,stageData.map(function(r){return r.count;}));
-  // Funnel view
+  stageData.push({label:'Closed Lost',count:lost.length,amt:0,avgAge:lostAvgAge,avgVal:null,isBad:true,col:'#ef4444'});
+  var maxCount=deals.length||1; // always relative to total created
+  // ── Funnel view ──
   var fHTML='';
   stageData.forEach(function(r,i){
-    var pct=maxCount>0?Math.max(Math.round(r.count/maxCount*100),4):4;
+    var pct=Math.max(Math.round(r.count/maxCount*100),r.count>0?2:0);
     var isLast=(i===stageData.length-1);
-    var nextLabel=!isLast?stageData[i+1].stage:null;
-    var convRate=(!isLast&&r.count>0)?Math.round(stageData[i+1].count/r.count*100):null;
+    // Conversion = next stage count / this stage count
+    var convRate=(!isLast&&!r.isBad&&r.count>0)?Math.round(stageData[i+1].count/r.count*100):null;
+    // Don't show conv rate from Closed Won to Closed Lost
+    if(r.label==='Closed Won') convRate=null;
     var rightInfo=r.count+' deal'+(r.count!==1?'s':'')+(r.amt>0?' · '+fmt(r.amt):'');
-    var isDashed=(r.stage==='Closed Lost');
+    var isDashed=r.isBad;
     fHTML+='<div style="margin-bottom:8px'+(isDashed?';border-top:2px dashed #fca5a5;padding-top:12px;margin-top:4px':'')+'">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'+
-        '<span style="font-size:13px;font-weight:600;color:'+(isDashed?'#b91c1c':'var(--text)')+'">'+(isDashed?'<span style="font-size:10px;font-weight:500;color:#9090b0">can exit from any stage</span><br>':'')+r.stage+'</span>'+
+        '<span style="font-size:13px;font-weight:600;color:'+(isDashed?'#b91c1c':'var(--text)')+'">'+
+          (isDashed?'<span style="font-size:10px;font-weight:500;color:#9090b0">can exit from any stage</span><br>':'')+
+          r.label+
+        '</span>'+
         '<span style="font-size:12px;font-weight:600;color:'+r.col+'">'+rightInfo+'</span>'+
       '</div>'+
-      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+r.col+'">'+(pct>=20?r.count:'')+'</div></div>'+
-      (convRate!==null?'<div class="funnel-arrow"><div class="funnel-line"></div><span class="conv-badge" style="background:'+(convRate<30?'#fee2e2':convRate<60?'#fef3c7':'#dcfce7')+';color:'+(convRate<30?'#b91c1c':convRate<60?'#92400e':'#166534')+'">'+convRate+'% → next stage</span><div class="funnel-line"></div></div>':'')+
+      '<div class="funnel-track"><div class="funnel-fill" style="width:'+pct+'%;background:'+r.col+'">'+(pct>=15?r.count:'')+'</div></div>'+
+      (convRate!==null?
+        '<div class="funnel-arrow"><div class="funnel-line"></div>'+
+        '<span class="conv-badge" style="background:'+(convRate<20?'#fee2e2':convRate<50?'#fef3c7':'#dcfce7')+';color:'+(convRate<20?'#b91c1c':convRate<50?'#92400e':'#166534')+'">'+
+          convRate+'% → next stage'+
+        '</span><div class="funnel-line"></div></div>':'')+
     '</div>';
   });
   var fEl=document.getElementById('scv-funnel-'+prodKey);
   if(fEl)fEl.innerHTML=fHTML;
-  // Table view
+  // ── Table view ──
   var tblHTML='<div class="tbl-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr>'+
     '<th style="background:#f8f7ff;padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#9090b0;border-bottom:1px solid rgba(0,0,0,0.08)">Stage</th>'+
@@ -1059,7 +1079,7 @@ function drawStageVelocity(prodKey,deals){
     var isDashed=r.isBad;
     tblHTML+='<tr style="'+(isDashed?'border-top:2px dashed #fca5a5;':'')+'">'+
       '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04)">'+
-        '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;background:'+r.col+'22;color:'+r.col+'">'+r.stage+'</span>'+
+        '<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:5px;background:'+r.col+'22;color:'+r.col+'">'+r.label+'</span>'+
         (isDashed?'<div style="font-size:10px;color:#9090b0;margin-top:2px">can exit from any stage</div>':'')+
       '</td>'+
       '<td style="padding:9px 12px;border-bottom:1px solid rgba(0,0,0,0.04);text-align:right;font-weight:700;color:'+r.col+'">'+r.count+'</td>'+
@@ -1070,16 +1090,15 @@ function drawStageVelocity(prodKey,deals){
       '</td>'+
     '</tr>';
   });
-  // Summary footer
   tblHTML+='<tr style="background:#f8f7ff">'+
-    '<td style="padding:9px 12px;font-size:11px;font-weight:600;color:#5a5a7a">Win Rate / Avg Age / Total Pipeline</td>'+
+    '<td style="padding:9px 12px;font-size:11px;font-weight:600;color:#5a5a7a">Summary</td>'+
     '<td></td><td></td>'+
     '<td style="padding:9px 12px;text-align:right">'+
       '<span style="font-size:12px;font-weight:700;color:#0e7b4c">'+winRate+'%</span>'+
-      '<span style="font-size:10px;color:#9090b0"> '+won.length+' won / '+lost.length+' lost</span>'+
+      ' <span style="font-size:10px;color:#9090b0">'+won.length+' won / '+lost.length+' lost</span>'+
     '</td>'+
     '<td style="padding:9px 12px;text-align:right">'+
-      (avgAge>0?'<span style="font-weight:700">'+avgAge+'d</span> <span style="font-size:10px;color:#9090b0">across all stages</span>':'—')+
+      (avgAge>0?'<span style="font-weight:700">'+avgAge+'d</span> <span style="font-size:10px;color:#9090b0">avg across all stages</span>':'—')+
     '</td>'+
   '</tr>';
   tblHTML+='</tbody></table></div>';
