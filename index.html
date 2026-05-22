@@ -619,6 +619,15 @@ function renderLeadsTab(prodKey,prod,leads){
       '<div class="stats-strip" id="'+statsId+'"></div>'+
       '<div class="legend" id="lleads-legend-'+prodKey+'"></div>'+
     '</div>'+
+    '<div class="chart-card" style="margin-bottom:16px">'+
+      '<div class="chart-header">'+
+        '<div><div class="chart-title">Lost deals — stage before loss</div><div class="chart-hint">Which stage deals were in before moving to Closed Lost</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">'+
+        '<div style="position:relative;height:220px;width:220px;flex-shrink:0"><canvas id="lost-stage-chart-'+prodKey+'"></canvas></div>'+
+        '<div id="lost-stage-legend-'+prodKey+'" style="flex:1;min-width:180px"></div>'+
+      '</div>'+
+    '</div>'+
     '<div class="table-card">'+
       '<div class="table-hdr">'+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="table-title" id="ltitle-'+prodKey+'">All Leads</span><span class="table-count" id="lcount-'+prodKey+'">0</span></div>'+
@@ -956,7 +965,48 @@ function renderDealsTab(prodKey,prod,deals){
   }
 
   drawDealsChart(prodKey,prod,deals,chartId);
+  drawLostFromStageChart(prodKey,deals);
   drawDealsTable(prodKey,deals);
+}
+
+function drawLostFromStageChart(prodKey,deals){
+  var lost=deals.filter(function(d){return d['Stage']==='Closed Lost';});
+  var total=lost.length;
+  if(!total)return;
+  var FROM_STAGE_COLORS={'Sales Accepted':'#4f7bff','Interest':'#f59e0b','Opportunity':'#10b981','RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa','Commitment':'#22c55e','Pilot':'#be185d','Closed Lost':'#ef4444'};
+  var counts={};
+  lost.forEach(function(d){var s=d['From Stage']||'Unknown';counts[s]=(counts[s]||0)+1;});
+  var entries=Object.entries(counts).sort(function(a,b){return b[1]-a[1];});
+  var labels=entries.map(function(e){return e[0];});
+  var data=entries.map(function(e){return e[1];});
+  var colors=labels.map(function(l){return FROM_STAGE_COLORS[l]||'#9ca3af';});
+  var chartId='lost-stage-chart-'+prodKey;
+  destroyChart(chartId);
+  var canvas=document.getElementById(chartId);
+  if(!canvas)return;
+  chartRegistry[chartId]=new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'#fff',hoverOffset:6}]},
+    options:{responsive:false,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){var pct=Math.round(ctx.raw/total*100);return ' '+ctx.label+': '+ctx.raw+' ('+pct+'%)';}}}}}
+  });
+  // Legend
+  var legEl=document.getElementById('lost-stage-legend-'+prodKey);
+  if(legEl)legEl.innerHTML=entries.map(function(e){
+    var pct=Math.round(e[1]/total*100);
+    var col=FROM_STAGE_COLORS[e[0]]||'#9ca3af';
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+      '<div style="width:10px;height:10px;border-radius:2px;background:'+col+';flex-shrink:0"></div>'+
+      '<div style="flex:1">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'+
+          '<span style="font-size:12px;font-weight:600">'+e[0]+'</span>'+
+          '<span style="font-size:12px;font-weight:700;color:'+col+'">'+e[1]+' <span style="font-weight:400;color:var(--text-muted)">'+pct+'%</span></span>'+
+        '</div>'+
+        '<div style="height:5px;background:#f0f0f6;border-radius:3px;overflow:hidden">'+
+          '<div style="height:100%;width:'+Math.max(pct,3)+'%;background:'+col+';border-radius:3px"></div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('')+'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.08);font-size:11px;color:var(--text-muted)">Total lost: <strong>'+total+'</strong></div>';
 }
 
 function drawDealsChart(prodKey,prod,deals,chartId){
