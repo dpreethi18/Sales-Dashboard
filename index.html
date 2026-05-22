@@ -52,6 +52,11 @@ body{font-family:-apple-system,'Segoe UI',system-ui,sans-serif;background:#f4f4f
 .sub-btn{font-size:12px;font-weight:500;padding:10px 18px;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
 .sub-btn:hover{color:var(--text);}
 .sub-btn.active{color:#301894;border-bottom-color:#301894;}
+.iob-bar{background:#f0eeff;border-bottom:1px solid rgba(0,0,0,0.07);padding:8px 32px;display:flex;align-items:center;gap:8px;}
+.iob-label{font-size:11px;font-weight:600;color:#7c7c9a;text-transform:uppercase;letter-spacing:0.5px;margin-right:4px;}
+.iob-btn{font-size:12px;font-weight:500;padding:4px 14px;border-radius:20px;border:1px solid rgba(0,0,0,0.12);background:#fff;color:#5a5a7a;cursor:pointer;transition:all .15s;}
+.iob-btn:hover{border-color:#301894;color:#301894;}
+.iob-btn.active{background:#301894;border-color:#301894;color:#fff;}
 .page{max-width:1080px;margin:0 auto;padding:28px 24px 64px;}
 .panel{display:none;}
 .panel.active{display:block;}
@@ -226,6 +231,12 @@ tbody tr:hover td{background:#f8f7ff;}
   <button class="sub-btn" data-sub="sal">SAL</button>
   <button class="sub-btn" data-sub="deals">Deals</button>
 </nav>
+<div class="iob-bar" id="iob-bar" style="display:none;">
+  <span class="iob-label">Source</span>
+  <button class="iob-btn active" data-iob="all">All</button>
+  <button class="iob-btn" data-iob="Inbound">Inbound</button>
+  <button class="iob-btn" data-iob="Outbound">Outbound</button>
+</div>
 
 <main class="page" id="main-page">
   <div class="panel active" id="panel-overall">
@@ -304,7 +315,7 @@ tbody tr:hover td{background:#f8f7ff;}
 
 <script>
 var ALL_LEADS=[],ALL_SAL=[],ALL_DEALS=[];
-var currentProd='overall',currentSub='overview';
+var currentProd='overall',currentSub='overview',currentIOB='all';
 var chartRegistry={};
 
 var ACTIVE_STAGES=['Opportunity','Procurement','Finance Approval','Commitment'];
@@ -312,7 +323,7 @@ var ALL_PIPE_STAGES=['Interest','Sales Accepted','Opportunity','RFP','Procuremen
 var STAGE_ORDER=['Interest','Sales Accepted','Opportunity','RFP','Procurement','Finance Approval','Commitment','Closed Won','Closed Lost'];
 var STAGE_COLORS={'Interest':'#f59e0b','Sales Accepted':'#4f7bff','Opportunity':'#10b981','RFP':'#06b6d4','Procurement':'#fb923c','Finance Approval':'#a78bfa','Commitment':'#22c55e','Closed Won':'#16a34a','Closed Lost':'#ef4444'};
 var TERR_COLORS={'Middle East':'#1a56db','North America':'#0e7b4c','Europe':'#d97706','UK':'#9333ea','India':'#0f766e','ANZ':'#be185d','USA':'#0369a1'};
-var LEAD_COLORS={'SAL':'#1a56db','DG Qualified':'#0e7b4c','Discovery Set':'#d97706','In-Progress':'#9ca3af','LTO':'#7c3aed'};
+var LEAD_COLORS={'SAL':'#1a56db','DG Qualified':'#0e7b4c','Discovery Set':'#d97706','In-Progress':'#9ca3af','LTO':'#7c3aed','New':'#60a5fa','Disqualified':'#f87171'};
 var LEAD_BADGES={'SAL':'b-sal','DG Qualified':'b-dg','Discovery Set':'b-disc','In-Progress':'b-prog','LTO':'b-lto'};
 var STAGE_BADGE={'Interest':'b-interest','Sales Accepted':'b-sal','Opportunity':'b-opp','Commitment':'b-commit','Closed Won':'b-won','Closed Lost':'b-lost'};
 
@@ -401,6 +412,27 @@ function buildStatsStrip(keys,totals,mode,elId){
     '<div class="stat-item"><div class="stat-label">Latest period</div><div class="stat-val">'+(keys.length?totals[totals.length-1]:0)+'</div><div class="stat-sub">'+(keys.length?fmtKey(keys[keys.length-1],mode):'—')+'</div></div>';
 }
 
+
+// ── IOB FILTER ──
+var iobBar=document.getElementById('iob-bar');
+document.querySelectorAll('.iob-btn').forEach(function(btn){
+  btn.onclick=function(){
+    currentIOB=this.dataset.iob;
+    document.querySelectorAll('.iob-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    renderCurrentView();
+  };
+});
+function applyIOB(arr, field){
+  if(currentIOB==='all') return arr;
+  var INBOUND_SRC=['Inbound','Content Download','Events','Webinar','Warmly','E-books','Website Visitor','Referral'];
+  return arr.filter(function(r){
+    var v=(r[field]||'').trim();
+    if(currentIOB==='Inbound') return INBOUND_SRC.indexOf(v)>-1;
+    if(currentIOB==='Outbound') return v==='Outbound'||v==='RFP Sourcing'||v==='Sales Outreach';
+    return true;
+  });
+}
 // ── NAV ──
 document.querySelectorAll('.prod-btn').forEach(function(btn){
   btn.onclick=function(){
@@ -409,8 +441,8 @@ document.querySelectorAll('.prod-btn').forEach(function(btn){
     document.querySelectorAll('#main-page > .panel').forEach(function(p){p.classList.remove('active');});
     var panel=document.getElementById('panel-'+currentProd);if(panel)panel.classList.add('active');
     var subNav=document.getElementById('sub-nav');
-    if(currentProd==='overall'){subNav.style.display='none';}
-    else{subNav.style.display='';document.querySelectorAll('.sub-btn').forEach(function(b){b.classList.toggle('active',b.dataset.sub==='overview');});showSubPanel(currentProd,'overview');}
+    if(currentProd==='overall'){subNav.style.display='none';iobBar.style.display='none';}
+    else{subNav.style.display='';iobBar.style.display='';document.querySelectorAll('.sub-btn').forEach(function(b){b.classList.toggle('active',b.dataset.sub==='overview');});showSubPanel(currentProd,'overview');}
     renderCurrentView();
   };
 });
@@ -432,9 +464,9 @@ document.getElementById('drawer-overlay').onclick=function(e){if(e.target===this
 function renderCurrentView(){
   if(currentProd==='overall'){renderOverall();return;}
   var prod=PRODS[currentProd];
-  var deals=ALL_DEALS.filter(prod.dealFilter);
-  var leads=ALL_LEADS.filter(prod.leadFilter);
-  var sal=ALL_SAL.filter(prod.salFilter);
+  var deals=applyIOB(ALL_DEALS.filter(prod.dealFilter),'Source Type');
+  var leads=applyIOB(ALL_LEADS.filter(prod.leadFilter),'Source Type');
+  var sal=applyIOB(ALL_SAL.filter(prod.salFilter),'Lead Type');
   if(currentSub==='overview') renderProductOverview(currentProd,prod,deals,leads,sal);
   if(currentSub==='leads')    renderLeadsTab(currentProd,prod,leads);
   if(currentSub==='sal')      renderSALTab(currentProd,prod,sal);
@@ -619,7 +651,7 @@ function renderLeadsTab(prodKey,prod,leads){
   drawLeadsChart(prodKey,prod,leads,chartId,statsId);drawLeadsTable(prodKey,leads);
 }
 function drawLeadsChart(prodKey,prod,leads,chartId,statsId){
-  var st=leadsState[prodKey];var STATUSES=['SAL','DG Qualified','Discovery Set','In-Progress','LTO'];var buckets={};
+  var st=leadsState[prodKey];var STATUSES=['SAL','DG Qualified','Discovery Set','In-Progress','LTO','New','Disqualified'];var buckets={};
   leads.forEach(function(l){var k=getKey(l['Create Date']||l['discovery meeting date']||'',st.mode);if(!k)return;if(!buckets[k]){buckets[k]={};STATUSES.forEach(function(s){buckets[k][s]=0;});}var ls=l['Lead Status']||'In-Progress';buckets[k][ls]=(buckets[k][ls]||0)+1;});
   var keys=Object.keys(buckets).sort();var totals=keys.map(function(k){return STATUSES.reduce(function(a,s){return a+(buckets[k][s]||0);},0);});
   destroyChart(chartId);var canvas=document.getElementById(chartId);if(!canvas)return;
